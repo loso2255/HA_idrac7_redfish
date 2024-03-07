@@ -65,7 +65,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
 
 class ConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for idrac7_redfish."""
+    """Handle a config flow for HA_idrac7_redfish."""
 
     VERSION = 1
     MINOR_VERSION = 1

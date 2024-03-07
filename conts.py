@@ -1,4 +1,4 @@
-"""Constants for the idrac7_redfish integration."""
+"""Constants for the HA_idrac7_redfish integration."""
 
 DOMAIN = "HA_idrac7_redfish"
 
