@@ -1,4 +1,4 @@
-"""Config flow for idrac7_redfish integration."""
+"""Config flow for HA_idrac7_redfish integration."""
 from __future__ import annotations
 
 import logging
