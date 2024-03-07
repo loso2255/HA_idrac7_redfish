@@ -1,0 +1,18 @@
+{
+    "version": "0.1.0",
+    "domain": "HA_idrac7_redfish",
+    "name": "HA_idrac7_redfish",
+    "codeowners": [
+      "@loso2255"
+    ],
+    "config_flow": true,
+    "dependencies": [],
+    "documentation": "https://www.home-assistant.io/integrations/idrac7_redfish",
+    "homekit": {},
+    "iot_class": "local_polling",
+    "requirements": [
+      "redfish==3.2.2"
+    ],
+    "ssdp": [],
+    "zeroconf": []
+  }
