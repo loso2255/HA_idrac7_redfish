@@ -46,12 +46,10 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     # )
 
     hub = RedfishApihub(data[CONF_HOST], data[CONF_USERNAME], data[CONF_PASSWORD])
-    # info = hub.getSysInfo()
-
     info = await hass.async_add_executor_job(hub.getSysInfo)
 
     system_info = {}
-    system_info["authdata"] = hub
+    system_info["authdata"] = data
     system_info["info"] = info
 
     # If you cannot connect:
@@ -60,6 +58,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     # InvalidAuth
     _LOGGER.info(msg="dentro dentro config_flow.validate_input: " + str(info))
 
+    await hass.async_add_executor_job(hub.__del__)
     # Return info that you want to store in the config entry.
     return system_info
 
@@ -89,25 +88,19 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
                 info = await validate_input(self.hass, user_input)
             except RetriesExhaustedError:
                 _LOGGER.exception(
-                    msg="name server: ["
-                    + user_input[CONF_HOST]
-                    + "] Retries Exhausted: maybe the server is unreachable"
+                    msg="name server: ["+ user_input[CONF_HOST]+ "] Retries Exhausted: maybe the server is unreachable"
                 )
                 errors["base"] = "Retries Exhausted: maybe the server is unreachable"
 
             except ServerDownOrUnreachableError:
                 _LOGGER.exception(
-                    msg="name server: ["
-                    + user_input[CONF_HOST]
-                    + "] server unreachable"
+                    msg="name server: ["+ user_input[CONF_HOST]+ "] server unreachable"
                 )
                 errors["base"] = "server unreachable"
 
             except SessionCreationError:
                 _LOGGER.exception(
-                    msg="name server: ["
-                    + user_input[CONF_HOST]
-                    + "] can't connect to server"
+                    msg="name server: ["+ user_input[CONF_HOST]+ "] can't connect to server"
                 )
                 errors["base"] = "cannot_connect"
 
