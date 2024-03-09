@@ -1,21 +1,25 @@
 {
     "config": {
-        "abort": {
-            "already_configured": "Dispositivo gia configurato"
-        },
-        "error": {
-            "cannot_connect": "Connessione fallita",
-            "invalid_auth": "Credenziali non valide",
-            "unknown": "errore inatteso"
-        },
-        "step": {
-            "user": {
-                "data": {
-                    "host": "Host",
-                    "password": "Password",
-                    "username": "Username"
-                }
-            }
+      
+      "step": {
+        "user": {
+          "data": {
+            "host": "Hostname of the iDrac",
+            "username": "iDrac username",
+            "password": "iDrac password",
+            "interval": "Interval in seconds between each poll"
+          }
         }
+      },
+
+      "error": {
+        "cannot_connect": "Connessione fallita",
+        "invalid_auth": "Credenziali non valide",
+        "unknown": "errore inatteso"
+      },
+    
+      "abort": {
+        "already_configured": "Dispositivo gia configurato"
+      }
     }
-}
+  }
