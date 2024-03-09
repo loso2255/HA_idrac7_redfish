@@ -13,7 +13,8 @@ from redfish.rest.v1 import (
 import voluptuous as vol
 
 
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import ConfigFlow
+from homeassistant.data_entry_flow import FlowResult
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 
@@ -76,9 +77,10 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
         self.EmbeddedSystem_list: dict[str, Any] = {}
         self.iDrac_list: dict[str, Any] = {}
 
+    # ConfigFlowResult non yet implemented use FlowResult
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    ) -> FlowResult:
         """Handle the initial step."""
 
         errors: dict[str, str] = {}
