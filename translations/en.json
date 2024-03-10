@@ -1,25 +1,25 @@
 {
-  "config": {
 
+  "config": {
     "step": {
       "user": {
+
         "data": {
-          "host": "Hostname of the iDrac",
-          "username": "iDrac username",
-          "password": "iDrac password",
-          "interval": "Interval in seconds between each poll"
+          "host": "Host iDrac",
+          "username": "username",
+          "password": "password"
         }
       }
     },
 
     "error": {
       "cannot_connect": "Connection Failed",
-      "invalid_auth": "Invalid Authentication",
-      "unknown": "Unexpected error"
+      "invalid_auth": "Credentials not valid",
+      "unknown": "unexpected error"
     },
     
     "abort": {
-      "already_configured": "This Device has already been configured"
+      "already_configured": "device alreay configured"
     }
   }
 }
