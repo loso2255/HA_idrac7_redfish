@@ -1,7 +1,10 @@
 # HA_idrac7_redfish
 
-installation with home assistant vscode server
+installation with home assistant vscode server:
+
 right click -> create a folder named -> custom_components
+or
+mkdir custom_components
 
 cd custom_components
 
