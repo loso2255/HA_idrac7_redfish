@@ -22,8 +22,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.data.setdefault(DOMAIN, {})
     # TODO 1. Create API instance
-    _LOGGER.info(msg="qualche info in piu entry config:"+str(entry))
-    _LOGGER.info(msg="qualche info in piu entry config:"+str(entry.data))
+    #_LOGGER.info(msg="qualche info in piu entry config:"+str(entry))
+    #_LOGGER.info(msg="qualche info in piu entry config:"+str(entry.data))
 
     api = RedfishApihub(ip=entry.data["authdata"][CONF_HOST],user=entry.data["authdata"][CONF_USERNAME],password=entry.data["authdata"][CONF_PASSWORD])
 
@@ -39,11 +39,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # hass.data[DOMAIN][entry.entry_id] = MyApi(...)
     hass.data[DOMAIN][entry.entry_id] = api
 
-    #hass.async_create_task(
-    #    hass.config_entries.async_forward_entry_setup(
-    #        entry, Platform.BINARY_SENSOR
-    #    )
-    #)
+    hass.async_create_task(
+        hass.config_entries.async_forward_entry_setup(
+            entry, Platform.BINARY_SENSOR
+        )
+    )
 
 
 
@@ -52,7 +52,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.data[DOMAIN].pop(entry.entry_id)
+    if unload_ok := await hass.config_entries.async_unload_platforms(entry, Platform.BINARY_SENSOR):
+        api : RedfishApi = hass.data[DOMAIN].pop(entry.entry_id)
+        await hass.async_add_executor_job(api.__del__)
 
     return unload_ok

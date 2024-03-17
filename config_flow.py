@@ -13,7 +13,7 @@ from redfish.rest.v1 import (
 import voluptuous as vol
 
 
-from homeassistant.config_entries import ConfigFlow
+from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant
@@ -47,7 +47,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     # )
 
     hub = RedfishApihub(data[CONF_HOST], data[CONF_USERNAME], data[CONF_PASSWORD])
-    info = await hass.async_add_executor_job(hub.getSysInfo)
+    info = await hass.async_add_executor_job(hub.getRedfishInfo)
 
     system_info = {}
     system_info["authdata"] = data
@@ -80,7 +80,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
     # ConfigFlowResult non yet implemented use FlowResult
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Handle the initial step."""
 
         errors: dict[str, str] = {}
@@ -119,8 +119,12 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
             else:
                 assert info is not None
                 _LOGGER.info(msg="dentro config_flow.setup_user: " + str(info))
+
+
+
+
                 return self.async_create_entry(
-                    title=info["info"]["ServiceTag"], data=info
+                    title=info["info"]["ServiceTag"], data=info,
                 )
 
         return self.async_show_form(

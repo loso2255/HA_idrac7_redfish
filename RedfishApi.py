@@ -3,7 +3,7 @@ import logging
 import redfish
 from redfish.rest.v1 import HttpClient
 
-from .const import General, ManagersGeneral, SystemsGeneral
+from .const import General, ManagersGeneral, SystemSpecific, SystemsGeneral
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,9 +25,16 @@ class RedfishApihub:
         self.lsEmmeddedManagers = []
         # self.lsEmmeddedManagers = self.getEmbeddedManagers()
 
+
+
+    ###################
+    #
+    #   utility class
+    #
+    ###################
     def singleton_login(self) -> HttpClient:
         if self.logget is None:
-            self.logget = redfish.redfish_client(base_url="https://" + self.ip)
+            self.logget = redfish.redfish_client(base_url="https://" + self.ip, max_retry=1)
             self.logget.login(username=self.user, password=self.password)
             _LOGGER.info(msg="maked login")
 
@@ -38,7 +45,14 @@ class RedfishApihub:
         _LOGGER.info(msg="already login")
         return self.logget
 
-    def getSysInfo(self) -> dict[str, str]:
+
+
+    #####################
+    #
+    #   get redfish info
+    #
+    ######################
+    def getRedfishInfo(self) -> dict[str, str]:
         dictionary = {}
 
         dictionary["ServiceTag"] = self.getServiceTag()
@@ -75,7 +89,7 @@ class RedfishApihub:
     # }
 
     def getEmbeddedManagers(self):
-        # {
+    # {
         logged = self.singleton_login()
 
         resp = logged.get(ManagersGeneral)
@@ -95,6 +109,44 @@ class RedfishApihub:
         return Managers
 
     # }
+
+
+
+    ########################
+    #
+    #   api embedded system
+    #
+    #########################
+    def getEmbSysInfo(self, idEmbSys) -> dict[str, str]:
+        logged = self.singleton_login()
+
+        dictionary = {}
+
+        resRedfish = logged.get(SystemSpecific.substitute({'EmbeddedSystemID' : str(idEmbSys)}))
+        #_LOGGER.info(msg=str(resRedfish))
+
+        dictionary["name"] = resRedfish.dict['HostName']
+        dictionary["model"] = resRedfish.dict['Model']
+        dictionary["manufacturer"] = resRedfish.dict['Manufacturer']
+        dictionary["sw_version"] = resRedfish.dict['BiosVersion']
+
+        return dictionary
+
+
+    def getpowerState(self, idEmbSys) -> dict[str, str]:
+        logged = self.singleton_login()
+
+        dictionary = {}
+
+        resRedfish = logged.get(SystemSpecific.substitute({'EmbeddedSystemID' : str(idEmbSys)}))
+        dictionary["state"] = resRedfish.dict['PowerState']
+
+        return dictionary
+
+
+
+
+
 
     # deletion of class
     def __del__(self):

@@ -1,5 +1,7 @@
 """Constants for the HA_idrac7_redfish integration."""
 
+from string import Template
+
 DOMAIN = "HA_idrac7_redfish"
 
 
@@ -16,6 +18,17 @@ DOMAIN = "HA_idrac7_redfish"
 #           }
 
 
+##################################
+#
+#   static utility
+#
+##################################
+
+manufacturer = "manufacturer"
+model = "model"
+
+
+
 ####################################################################
 #
 #   API IDRAC CALL
@@ -24,17 +37,24 @@ DOMAIN = "HA_idrac7_redfish"
 
 General = "/redfish/v1/"
 
-SystemsGeneral = "/redfish/v1/Systems"
-SystemSpecific = "/redfish/v1/Systems/$EmbeddedSystemID"
-SystemSetPowerStatus = (
-    "/redfish/v1/Systems/$EmbeddedSystemID/Actions/ComputerSystem.Reset"
-)
 
+#software info
+SystemsGeneral = "/redfish/v1/Systems"
+SystemSpecific = Template("/redfish/v1/Systems/$EmbeddedSystemID")
+SystemSetPowerStatus = Template("/redfish/v1/Systems/$EmbeddedSystemID/Actions/ComputerSystem.Reset")
+
+#sensor info
+Chassis = "/redfish/v1/Chassis"
+ChassisSpecific = Template("/redfish/v1/Chassis/$EmbeddedSystemID")
+ChassisReset = Template("/redfish/v1/Chassis/$EmbeddedSystemID/Actions/Chassis.Reset")
+
+#Managers
 ManagersGeneral = "/redfish/v1/Managers"
 
 
-AccountService = "/redfish/v1/Managers/$EmbeddedSystemID/AccountService"
+AccountService = Template("/redfish/v1/Managers/$EmbeddedSystemID/AccountService")
 
 
-Chassis = "/redfish/v1/Chassis"
-ChassisReset = "/redfish/v1/Chassis/$EmbeddedSystemID/Actions/Chassis.Reset"
+
+
+
