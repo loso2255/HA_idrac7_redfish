@@ -27,7 +27,7 @@ DOMAIN = "HA_idrac7_redfish"
 manufacturer = "manufacturer"
 model = "model"
 
-
+SERVER_POWER_STATUS_POOL = 5
 
 ####################################################################
 #

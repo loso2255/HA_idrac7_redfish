@@ -22,10 +22,11 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpda
 #local import
 
 from ...RedfishApi import RedfishApihub
+from ...const import SERVER_POWER_STATUS_POOL
 
 _LOGGER = logging.getLogger(__name__)
 
-class StatusCoordinator(DataUpdateCoordinator):
+class PowerStatusCoordinator(DataUpdateCoordinator):
     """My custom coordinator."""
 
     def __init__(self, hass: HomeAssistant, my_api : RedfishApihub) -> None:
@@ -36,7 +37,7 @@ class StatusCoordinator(DataUpdateCoordinator):
             # Name of the data. For logging purposes.
             name="Power Status",
             # Polling interval. Will only be polled if there are subscribers.
-            update_interval=timedelta(seconds=5),
+            update_interval=timedelta(seconds=SERVER_POWER_STATUS_POOL),
         )
 
         self.my_api = my_api
@@ -78,7 +79,7 @@ class StatusCoordinator(DataUpdateCoordinator):
 
 
 
-class IdracStatusBinarySensor(CoordinatorEntity,BinarySensorEntity):
+class PowerStatusBinarySensor(CoordinatorEntity,BinarySensorEntity):
     """The iDrac's current power sensor entity."""
 
     def __init__(self, coordinator: DataUpdateCoordinator, idx, device_info: DeviceInfo, infoSingleSystem : dict) ->None:
@@ -96,7 +97,6 @@ class IdracStatusBinarySensor(CoordinatorEntity,BinarySensorEntity):
         self._attr_unique_id = infoSingleSystem['ServiceTag']+"_"+infoSingleSystem['id']+"_status"
         self._attr_has_entity_name = True
 
-        #self.rest.register_callback_status(self.update_value)
 
     @property
     def name(self):
@@ -106,7 +106,13 @@ class IdracStatusBinarySensor(CoordinatorEntity,BinarySensorEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        _LOGGER.info("coordinator data: "+str(self.coordinator.data))
+        _LOGGER.info("coordinator data Power Status: "+str(self.coordinator.data))
 
         self._attr_is_on = self.coordinator.data[self.idx]["state"]
+
+        if self.coordinator.data[self.idx]["state"] == "On":
+            self._attr_is_on = True
+        else:
+            self._attr_is_on = False
+
         self.async_write_ha_state()

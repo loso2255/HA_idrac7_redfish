@@ -10,18 +10,18 @@ _LOGGER = logging.getLogger(__name__)
 
 class RedfishApihub:
     def __init__(self, ip: str, user: str, password: str):
-        self.ip = ip
-        self.user = user
-        self.password = password
+        self.ip : str = ip
+        self.user : str = user
+        self.password : str = password
 
-        self.logget = None
+        self.logget : HttpClient = None
         # self.logget = self.singleton_login()
 
-        self.MembersCount = 0
+        self.MembersCount : int = 0
         self.lsEmmeddedSystem = []
         # self.lsEmmeddedSystem = self.getEmbeddedSystem()
 
-        self.ManagersCount = 0
+        self.ManagersCount : int = 0
         self.lsEmmeddedManagers = []
         # self.lsEmmeddedManagers = self.getEmbeddedManagers()
 
@@ -33,17 +33,33 @@ class RedfishApihub:
     #
     ###################
     def singleton_login(self) -> HttpClient:
+
+        #first login
         if self.logget is None:
             self.logget = redfish.redfish_client(base_url="https://" + self.ip, max_retry=1)
+
             self.logget.login(username=self.user, password=self.password)
+
             _LOGGER.info(msg="maked login")
 
             # assert self.logget is not None
             return self.logget
 
-        assert self.logget is not None
-        _LOGGER.info(msg="already login")
-        return self.logget
+        #if already logged
+        elif self.logget is not None:
+
+            #test sessions
+            _LOGGER.info(msg="test session")
+            res = self.logget.get(ManagersGeneral)
+
+            if res.status == 401:
+                _LOGGER.info("Re oauth in progress")
+                self.logget.login(username=self.user, password=self.password)
+
+            else:
+                _LOGGER.info(msg="session ok")
+
+            return self.logget
 
 
 
@@ -62,9 +78,11 @@ class RedfishApihub:
         return dictionary
 
     def getServiceTag(self) -> str:
-        login = self.singleton_login()
+        login = redfish.redfish_client(base_url="https://" + self.ip, max_retry=1)
+
         ServiceTag = login.get(General).dict["Oem"]["Dell"]["ServiceTag"]
         return str(ServiceTag)
+
 
     def getEmbeddedSystem(self):
         # {
@@ -117,6 +135,8 @@ class RedfishApihub:
     #   api embedded system
     #
     #########################
+
+
     def getEmbSysInfo(self, idEmbSys) -> dict[str, str]:
         logged = self.singleton_login()
 
@@ -143,6 +163,39 @@ class RedfishApihub:
 
         return dictionary
 
+
+    def getHealthStatus(self, idEmbSys) -> dict[str, str]:
+        logged = self.singleton_login()
+
+        dictionary = {}
+
+        resRedfish = logged.get(SystemSpecific.substitute({'EmbeddedSystemID' : str(idEmbSys)}))
+        dictionary["health"] = resRedfish.dict['Status']['Health']
+
+        return dictionary
+
+
+    ########################
+    #
+    #   api manager idrac
+    #
+    #########################
+
+
+    def getManiDracInfo(self, idManiDrac) -> dict[str, str]:
+        logged = self.singleton_login()
+
+        dictionary = {}
+
+        resRedfish = logged.get(SystemSpecific.substitute({'EmbeddedSystemID' : str(idManiDrac)}))
+        #_LOGGER.info(msg=str(resRedfish))
+
+        dictionary["name"] = resRedfish.dict['name']
+        #dictionary["model"] = resRedfish.dict['Model']
+        #dictionary["manufacturer"] = resRedfish.dict['Manufacturer']
+        dictionary["sw_version"] = resRedfish.dict['FirmwareVersion']
+
+        return dictionary
 
 
 
