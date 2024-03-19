@@ -27,6 +27,7 @@ DOMAIN = "HA_idrac7_redfish"
 manufacturer = "manufacturer"
 model = "model"
 
+DELAY_TIME = 'time_delay'
 SERVER_POWER_STATUS_POOL = 5
 
 ####################################################################
@@ -50,6 +51,9 @@ ChassisReset = Template("/redfish/v1/Chassis/$EmbeddedSystemID/Actions/Chassis.R
 
 #Managers
 ManagersGeneral = "/redfish/v1/Managers"
+
+#SetPowerStatus
+SetPowerStatus = Template("/redfish/v1/Systems/$EmbeddedSystemID/Actions/ComputerSystem.Reset")
 
 
 AccountService = Template("/redfish/v1/Managers/$EmbeddedSystemID/AccountService")

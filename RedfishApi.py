@@ -3,7 +3,7 @@ import logging
 import redfish
 from redfish.rest.v1 import HttpClient
 
-from .const import General, ManagersGeneral, SystemSpecific, SystemsGeneral
+from .const import General, ManagersGeneral, SetPowerStatus, SystemSpecific, SystemsGeneral
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -137,6 +137,9 @@ class RedfishApihub:
     #########################
 
 
+    #
+    # setup functions
+
     def getEmbSysInfo(self, idEmbSys) -> dict[str, str]:
         logged = self.singleton_login()
 
@@ -152,6 +155,18 @@ class RedfishApihub:
 
         return dictionary
 
+    def getEmbSysPowerActions(self, idEmbSys) -> list[str]:
+        logged = self.singleton_login()
+
+        resRedfish = logged.get(SystemSpecific.substitute({'EmbeddedSystemID' : str(idEmbSys)}))
+        #_LOGGER.info(msg=str(resRedfish))
+
+        return resRedfish.dict['Actions']['#ComputerSystem.Reset']['ResetType@Redfish.AllowableValues']
+
+
+
+    #
+    # poolling functions
 
     def getpowerState(self, idEmbSys) -> dict[str, str]:
         logged = self.singleton_login()
@@ -174,6 +189,15 @@ class RedfishApihub:
 
         return dictionary
 
+    def pressPowerStatusButton(self, idEmbSys , actions : str):
+        logged = self.singleton_login()
+
+        resRedfish = logged.post(path=SetPowerStatus.substitute({'EmbeddedSystemID' : str(idEmbSys)}), body={ 'ResetType': actions } )
+        _LOGGER.info("res status power button: "+str(resRedfish.status))
+        _LOGGER.info("res power button: "+str(resRedfish))
+
+
+
 
     ########################
     #
@@ -181,6 +205,8 @@ class RedfishApihub:
     #
     #########################
 
+    #
+    # setup functions
 
     def getManiDracInfo(self, idManiDrac) -> dict[str, str]:
         logged = self.singleton_login()

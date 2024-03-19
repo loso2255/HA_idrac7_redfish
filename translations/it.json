@@ -1,25 +1,22 @@
 {
-
   "config": {
-    "step": {
-      "user": {
-
-        "data": {
-          "host": "ip host",
-          "username": "username",
-          "password": "password"
-        }
+      "abort": {
+          "already_configured": "Dispositivo gia configurato"
+      },
+      "error": {
+          "cannot_connect": "Connessione fallita",
+          "invalid_auth": "Credenziali non valide",
+          "unknown": "errore inatteso"
+      },
+      "step": {
+          "user": {
+              "data": {
+                  "host": "Host",
+                  "password": "Password",
+                  "username": "Username",
+                  "delay": "tempo di richiesta"
+              }
+          }
       }
-    },
-
-    "error": {
-      "cannot_connect": "non riesco a connettermi",
-      "invalid_auth": "credenziali non valide",
-      "unknown": "errore inaspettato"
-    },
-    
-    "abort": {
-      "already_configured": "il ddispositivo è gia configurato"
-    }
   }
 }

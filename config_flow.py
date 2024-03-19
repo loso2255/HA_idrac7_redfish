@@ -19,7 +19,7 @@ from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME, CONF_DE
 from homeassistant.core import HomeAssistant
 
 from .RedfishApi import RedfishApihub
-from .const import DOMAIN
+from .const import DELAY_TIME, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_HOST): str,
         vol.Required(CONF_USERNAME): str,
         vol.Required(CONF_PASSWORD): str,
-        vol.Required(CONF_DELAY): str,
+        vol.Required(DELAY_TIME): str,
     }
 )
 
@@ -94,6 +94,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
             except Exception as exp:
                 _LOGGER.exception(msg="name server: [" + "" + "]" + str(exp))
                 errors["base"] = "unknown exception"
+                return self.async_abort(reason="unknown exception check logs")
 
             else:
                 assert info is not None
@@ -113,7 +114,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
         )
 
-
+    # for the future (enable disable registration of device)
 #    async def async_step_EmbSys(self, user_input: dict[str, Any] | None = None ) -> ConfigFlowResult:
 #
 #            #show list of embedded system
@@ -127,7 +128,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 
-
+    #check if entry already exist
     async def api_alias_already_configured(self, user_input: dict[str, Any]) -> bool:
 
         for entry in self._async_current_entries():

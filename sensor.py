@@ -1,0 +1,74 @@
+from __future__ import annotations
+
+import logging
+
+#home assistant import
+from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigEntry
+
+#platoform import
+from homeassistant.components.binary_sensor import BinarySensorEntity, BinarySensorDeviceClass, \
+    BinarySensorEntityDescription
+
+#entity import
+from homeassistant.exceptions import PlatformNotReady
+from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.const import CONF_DELAY
+
+from redfish.rest.v1 import (
+    InvalidCredentialsError,
+    RetriesExhaustedError,
+    ServerDownOrUnreachableError,
+    SessionCreationError,
+)
+
+
+# local import
+from .const import DELAY_TIME, DOMAIN
+from .RedfishApi import RedfishApihub
+from .type_sensor.binary_sensor.Server_Power_status import PowerStatusBinarySensor,PowerStatusCoordinator
+from .type_sensor.binary_sensor.Server_health_status import HealthStatusBinarySensor, HealthStatusCoordinator
+
+_LOGGER = logging.getLogger(__name__)
+
+from datetime import timedelta
+
+
+
+
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
+    """Set up entry."""
+    api : RedfishApihub = hass.data[DOMAIN][config_entry.entry_id]
+    #_LOGGER.info("config_entry: "+str(config_entry.data))
+
+    # topology info test connections
+    info = await hass.async_add_executor_job(api.getRedfishInfo)
+
+
+    infoSingleSystem : dict = {}
+    infoSingleSystem['ServiceTag'] = info['ServiceTag']
+    infoSingleSystem['PullingTime'] = config_entry.data["authdata"][DELAY_TIME]
+
+    # nel for, per ogni embbeddded system get System.Embedded.info
+    # setto i sensori dell'embedded system
+    for EmbSys in info["Members"]:
+        infoSingleSystem['id'] = EmbSys['id']
+
+        if EmbSys["enable"] is False:
+
+            _LOGGER.info(msg="form Server: "+info['ServiceTag']+"   setup sensor for: "+ EmbSys['id'])
+            #status = await setup_Embedded_System_entry(hass= hass, api= api, async_add_entities= async_add_entities, infoSingleSystem= infoSingleSystem)
+
+
+
+#    for EmbMan in info["Managers"]:
+#        infoSingleSystem['id'] = EmbMan['id']
+
+#        if EmbMan["enable"] is False:
+
+#            _LOGGER.info(msg="form Server: "+info['ServiceTag']+"   setup binary_sensor for: "+ EmbMan['id'])
+#            status = await setup_iDrac_Managers_entry(hass= hass, api= api, async_add_entities= async_add_entities, infoSingleSystem= infoSingleSystem)
+
+
+    return None

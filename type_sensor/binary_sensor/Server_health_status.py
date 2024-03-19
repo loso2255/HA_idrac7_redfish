@@ -37,7 +37,7 @@ class HealthStatusCoordinator(DataUpdateCoordinator):
             # Name of the data. For logging purposes.
             name="Health Status",
             # Polling interval. Will only be polled if there are subscribers.
-            update_interval=timedelta(seconds=5) #timedelta(seconds=int(PoolingUpdate)),
+            update_interval= timedelta(seconds=int(PoolingUpdate)) #timedelta(seconds=5)
         )
 
         self.my_api = my_api
@@ -63,7 +63,7 @@ class HealthStatusCoordinator(DataUpdateCoordinator):
 
                 result : dict = {}
                 for elm in listening_idx:
-                    result[elm] = await self.hass.async_add_executor_job(self.my_api.getHealthStatus, elm )
+                        result[elm] = await self.hass.async_add_executor_job(self.my_api.getHealthStatus, elm )
 
                 return result
 
@@ -89,7 +89,7 @@ class HealthStatusBinarySensor(CoordinatorEntity,BinarySensorEntity):
         self.entity_description = BinarySensorEntityDescription(
             key='Health Status',
             name='Health Status',
-            icon='mdi:power',
+            icon='mdi:check-circle',
             device_class=BinarySensorDeviceClass.PROBLEM,
         )
 

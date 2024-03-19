@@ -1,5 +1,5 @@
 {
-    "version": "0.1.0",
+    "version": "0.1.2",
     "domain": "HA_idrac7_redfish",
     "name": "HA_idrac7_redfish",
     "codeowners": [
