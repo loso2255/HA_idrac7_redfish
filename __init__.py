@@ -43,6 +43,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.error(msg="name server: ["+ entry.data["info"]["ServiceTag"]+ "] Retries Exhausted: maybe the server is unreachable")
         raise ConfigEntryNotReady("Connection error while connecting to: "+entry.data["info"]["ServiceTag"])
 
+    except SessionCreationError:
+        _LOGGER.exception( msg="name server: [" + entry.data["info"]["ServiceTag"] + "] Session Creation Error")
+        raise ConfigEntryNotReady("name server: [" + entry.data["info"]["ServiceTag"] + "] Session Creation Error")
+
     except InvalidCredentialsError:
         _LOGGER.exception( msg="name server: [" + entry.data["info"]["ServiceTag"] + "] invalid_auth")
         raise ConfigEntryNotReady("name server: [" + entry.data["info"]["ServiceTag"] + "] invalid_auth")
@@ -62,13 +66,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # hass.data[DOMAIN][entry.entry_id] = MyApi(...)
         hass.data[DOMAIN][entry.entry_id] = api
 
-        hass.async_create_task(
+        await hass.async_create_task(
             hass.config_entries.async_forward_entry_setup(
                 entry, Platform.BINARY_SENSOR
             )
         )
 
+        await hass.async_create_task(
+            hass.config_entries.async_forward_entry_setup(
+                entry, Platform.SENSOR
+            )
+        )
 
+        await hass.async_create_task(
+            hass.config_entries.async_forward_entry_setup(
+                entry, Platform.BUTTON
+            )
+        )
 
 
     return True
