@@ -3,7 +3,7 @@ import logging
 import redfish
 from redfish.rest.v1 import HttpClient
 
-from .const import General, ManagersGeneral, SetPowerStatus, SystemSpecific, SystemsGeneral
+from .const import ChassisFans, General, ManagersGeneral, SetPowerStatus, SystemSpecific, SystemsGeneral
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -129,7 +129,6 @@ class RedfishApihub:
     # }
 
 
-
     ########################
     #
     #   api embedded system
@@ -164,6 +163,24 @@ class RedfishApihub:
         return resRedfish.dict['Actions']['#ComputerSystem.Reset']['ResetType@Redfish.AllowableValues']
 
 
+    def getEmbeddedSystemCooledBy(self, idEmbSys) -> list[str]:
+    # {
+        logged = self.singleton_login()
+
+        resp = logged.get(SystemSpecific.substitute({'EmbeddedSystemID' : str(idEmbSys)}))
+        lsFan = resp.dict["Links"]["CooledBy"]
+        _LOGGER.info( "all fans cooling raw: " + str(lsFan) )
+
+        fanID = []
+
+        for elm in lsFan:
+            id_elm = elm["@odata.id"].split("/")
+            fanID.append( id_elm[(len(id_elm) - 1)] )
+
+        return fanID
+    # }
+
+
 
     #
     # poolling functions
@@ -195,6 +212,18 @@ class RedfishApihub:
         resRedfish = logged.post(path=SetPowerStatus.substitute({'EmbeddedSystemID' : str(idEmbSys)}), body={ 'ResetType': actions } )
         _LOGGER.info("res status power button: "+str(resRedfish.status))
         _LOGGER.info("res power button: "+str(resRedfish))
+
+
+    def getFanSensor(self, idSys, idFan):
+    # {
+        logged = self.singleton_login()
+        _LOGGER.info("############################## get fan senor ############################")
+
+        resp = logged.get(ChassisFans.substitute({'EmbeddedSystemID' : idSys, 'FanID': idFan}))
+        #_LOGGER.info("get_fan_senor: "+str(resp))
+
+        return resp.dict["Reading"]
+    # }
 
 
 

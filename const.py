@@ -49,6 +49,16 @@ Chassis = "/redfish/v1/Chassis"
 ChassisSpecific = Template("/redfish/v1/Chassis/$EmbeddedSystemID")
 ChassisReset = Template("/redfish/v1/Chassis/$EmbeddedSystemID/Actions/Chassis.Reset")
 
+#sensor Fans
+ChassisFans = Template('/redfish/v1/Chassis/$EmbeddedSystemID/Sensors/Fans/$FanID')
+
+#PowerConsumptions
+ChassisConsumptions = Template('/redfish/v1/Chassis/$EmbeddedSystemID/Power')
+#Sensor powerPSU
+ChassisPSU = Template('/redfish/v1/Chassis/$EmbeddedSystemID/Power/PowerSupplies/$PSUid')
+
+
+
 #Managers
 ManagersGeneral = "/redfish/v1/Managers"
 
@@ -56,9 +66,5 @@ ManagersGeneral = "/redfish/v1/Managers"
 SetPowerStatus = Template("/redfish/v1/Systems/$EmbeddedSystemID/Actions/ComputerSystem.Reset")
 
 
+
 AccountService = Template("/redfish/v1/Managers/$EmbeddedSystemID/AccountService")
-
-
-
-
-

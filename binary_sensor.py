@@ -81,14 +81,16 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 async def setup_Embedded_System_entry(hass: HomeAssistant, api : RedfishApihub, async_add_entities: AddEntitiesCallback, infoSingleSystem : dict):
 
     EmbSysInfo = await hass.async_add_executor_job(api.getEmbSysInfo, infoSingleSystem['id'])
+    _LOGGER.info(msg="identificativo device: " + str(infoSingleSystem['ServiceTag']+"_"+infoSingleSystem['id']) )
+
     device_info = DeviceInfo(
                 #  esempio {('domain', DOMAIN), ('serial', "ServiceTag_Embedded.System.1")}
-        identifiers={('domain', DOMAIN), ('serial', str(infoSingleSystem['ServiceTag']+"_"+infoSingleSystem['id'])) },
+        identifiers={ (DOMAIN, str(infoSingleSystem['ServiceTag']+"_"+infoSingleSystem['id']))  },
         name=EmbSysInfo["name"],
         manufacturer=EmbSysInfo['manufacturer'],
         model=EmbSysInfo['model'],
         sw_version=EmbSysInfo['sw_version'],
-        #serial_number=serial
+        #serial_number=str(infoSingleSystem['ServiceTag'])
     )
 
     coordinator = PowerStatusCoordinator(hass, api)
@@ -115,7 +117,7 @@ async def setup_iDrac_Managers_entry(hass: HomeAssistant, api : RedfishApihub, a
     EmbSysInfo = await hass.async_add_executor_job(api.getEmbeddedManagers, infoSingleSystem['id'])
     device_info = DeviceInfo(
                 #  esempio {('domain', DOMAIN), ('serial', "ServiceTag_Embedded.System.1")}
-        identifiers={('domain', DOMAIN), ('serial', str(infoSingleSystem['ServiceTag']+"_"+infoSingleSystem['id'])) },
+        identifiers={(DOMAIN, str(infoSingleSystem['ServiceTag']+"_"+infoSingleSystem['id'])) },
         name=EmbSysInfo["name"],
         #manufacturer=EmbSysInfo['manufacturer'],
         #model=EmbSysInfo['model'],
