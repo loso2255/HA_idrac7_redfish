@@ -27,8 +27,9 @@ from redfish.rest.v1 import (
 # local import
 from .const import DELAY_TIME, DOMAIN
 from .RedfishApi import RedfishApihub
-from .type_sensor.binary_sensor.Server_Power_status import PowerStatusBinarySensor,PowerStatusCoordinator
-from .type_sensor.binary_sensor.Server_health_status import HealthStatusBinarySensor, HealthStatusCoordinator
+from .type_sensor.sensor.Server_Fan_sensor import FanSensor,FansCoordinator
+
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,6 +42,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     """Set up entry."""
     api : RedfishApihub = hass.data[DOMAIN][config_entry.entry_id]
     #_LOGGER.info("config_entry: "+str(config_entry.data))
+    _LOGGER.info("########### ingresso fan config ############## ")
 
     # topology info test connections
     info = await hass.async_add_executor_job(api.getRedfishInfo)
@@ -58,7 +60,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
         if EmbSys["enable"] is False:
 
             _LOGGER.info(msg="form Server: "+info['ServiceTag']+"   setup sensor for: "+ EmbSys['id'])
-            #status = await setup_Embedded_System_entry(hass= hass, api= api, async_add_entities= async_add_entities, infoSingleSystem= infoSingleSystem)
+            status = await setup_Embedded_System_Fans_speed(hass= hass, api= api, async_add_entities= async_add_entities, infoSingleSystem= infoSingleSystem)
 
 
 
@@ -72,3 +74,39 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
 
     return None
+
+
+async def setup_Embedded_System_Fans_speed(hass: HomeAssistant, api : RedfishApihub, async_add_entities: AddEntitiesCallback, infoSingleSystem : dict):
+
+    EmbSysInfo = await hass.async_add_executor_job(api.getEmbSysInfo, infoSingleSystem['id'])
+    _LOGGER.info(msg="identificativo device: " + str(infoSingleSystem['ServiceTag']+"_"+infoSingleSystem['id']) )
+
+    device_info = DeviceInfo(
+                #  esempio {('domain', DOMAIN), ('serial', "ServiceTag_Embedded.System.1")}
+        identifiers={ (DOMAIN, str(infoSingleSystem['ServiceTag']+"_"+infoSingleSystem['id']))  },
+        name=EmbSysInfo["name"],
+        manufacturer=EmbSysInfo['manufacturer'],
+        model=EmbSysInfo['model'],
+        sw_version=EmbSysInfo['sw_version'],
+        serial_number=str(infoSingleSystem['ServiceTag'])
+    )
+
+
+    EmbSysCooledBy = await hass.async_add_executor_job(api.getEmbeddedSystemCooledBy, infoSingleSystem['id'])
+
+    coordinator = FansCoordinator(hass, api, infoSingleSystem['id'], infoSingleSystem['PullingTime'])
+
+
+    FansSensor = []
+    for elm in EmbSysCooledBy:
+        _LOGGER.info("add sensorFan for status: "+elm)
+        FansSensor.append( FanSensor(coordinator,  elm, device_info, infoSingleSystem) )
+
+
+    async_add_entities(FansSensor,True)
+
+
+    await coordinator.async_config_entry_first_refresh()
+
+
+    return True

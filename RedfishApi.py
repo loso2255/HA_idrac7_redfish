@@ -210,19 +210,17 @@ class RedfishApihub:
         logged = self.singleton_login()
 
         resRedfish = logged.post(path=SetPowerStatus.substitute({'EmbeddedSystemID' : str(idEmbSys)}), body={ 'ResetType': actions } )
-        _LOGGER.info("res status power button: "+str(resRedfish.status))
-        _LOGGER.info("res power button: "+str(resRedfish))
+        #_LOGGER.info("res status power button: "+str(resRedfish.status))
+        #_LOGGER.info("res power button: "+str(resRedfish))
 
 
-    def getFanSensor(self, idSys, idFan):
+    def getFanSensor(self, idEmbSys, idFan):
     # {
         logged = self.singleton_login()
-        _LOGGER.info("############################## get fan senor ############################")
 
-        resp = logged.get(ChassisFans.substitute({'EmbeddedSystemID' : idSys, 'FanID': idFan}))
-        #_LOGGER.info("get_fan_senor: "+str(resp))
+        resp = logged.get( path = ChassisFans.substitute( {'EmbeddedSystemID' : str(idEmbSys), 'FanID': str(idFan) } ) )
 
-        return resp.dict["Reading"]
+        return str(resp.dict["Reading"])
     # }
 
 

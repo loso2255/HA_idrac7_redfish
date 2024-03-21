@@ -22,6 +22,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpda
 
 #local import
 
+from ...const import REQUEST_FOR_FAN_SPEED
 from ...RedfishApi import RedfishApihub
 
 _LOGGER = logging.getLogger(__name__)
@@ -36,7 +37,7 @@ class FansCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             # Name of the data. For logging purposes.
-            name="Power Status",
+            name="Fans Speed",
             # Polling interval. Will only be polled if there are subscribers.
             update_interval=timedelta(seconds=int(PoolingUpdate)) #timedelta(seconds=5),
         )
@@ -55,30 +56,26 @@ class FansCoordinator(DataUpdateCoordinator):
         try:
             # Note: asyncio.TimeoutError and aiohttp.ClientError are already
             # handled by the data update coordinator.
-            async with async_timeout.timeout(7):
+            async with async_timeout.timeout(REQUEST_FOR_FAN_SPEED):
 
                 # Grab active context variables to limit data required to be fetched from API
                 # Note: using context is not required if there is no need or ability to limit
                 # data retrieved from API.
                 listening_idx = set(self.async_contexts())
-                _LOGGER.info("idx_info fans: "+str(listening_idx))
-                _LOGGER.info("############ sono prima del forrr dele fan ############# ")
-
-
+                _LOGGER.info("entitys registered for fan speed: "+str(listening_idx))
 
                 result : dict = {}
                 for elm in listening_idx:
-                    _LOGGER.info("Sono dentro il ffor delle faNS " + str(elm))
+                    #_LOGGER.info("Sono dentro il for delle faNS " + str(elm))
 
-                    #elm = dict("{'idSys': 'System.Embedded.1', 'idFan': '0x17%7C%7CFan.Embedded.6'}")
-                    #_LOGGER.info("Sto cercando il dato nuovo della fan id : "+ str(elm.keys))
-                    #if result[elm['idSys']] is None:
-                    #    result[elm['idSys']] = { elm['idFan'] : await self.hass.async_add_executor_job( self.my_api.getFanSensor, elm['idSys'], elm['idFan'] )}
-                    #else:
-                    result[elm['idFan']] = await self.hass.async_add_executor_job( self.my_api.getFanSensor, self.id_device, elm['idFan'] )
+                    result[elm] = await self.hass.async_add_executor_job( self.my_api.getFanSensor,  str(self.id_device), str(elm)  )
 
-                _LOGGER.info("############ sono dopo del forrr dele fan ############# ")
-                _LOGGER.info("ecco cosa ho recuperato: "+str(result))
+
+
+                if len(result) != len(listening_idx):
+                    raise UpdateFailed("not all fan are retrived")
+
+                #_LOGGER.info("ecco cosa ho recuperato: "+str(result))
 
                 return result
 
@@ -95,24 +92,26 @@ class FansCoordinator(DataUpdateCoordinator):
 class FanSensor(CoordinatorEntity,SensorEntity):
     """The iDrac's current power sensor entity."""
 
-    def __init__(self, coordinator: DataUpdateCoordinator, idx, device_info: DeviceInfo, infoSingleSystem : dict) ->None:
+    def __init__(self, coordinator: DataUpdateCoordinator, idx : str, device_info: DeviceInfo, infoSingleSystem : dict) ->None:
         super().__init__(coordinator, context=idx)
 
         self.idx = idx
 
+        getNFan = idx.split(".")
+
+
         self.entity_description = SensorEntityDescription(
-            key='Fan Speed Rpm',
-            name='Fan Speed Rpm',
+            key='Fan Speed '+getNFan[len(getNFan)-1],
+            name='Fan Speed '+getNFan[len(getNFan)-1],
             icon='mdi:fan',
             native_unit_of_measurement='RPM',
             state_class=SensorStateClass.MEASUREMENT
-            #device_class=SensorDeviceClass.,
         )
 
-        self.id_fan = infoSingleSystem['idFan']
+        self.id_fan = idx
 
         self._attr_device_info = device_info
-        self._attr_unique_id = infoSingleSystem['ServiceTag']+"_"+infoSingleSystem['id']+"_"+infoSingleSystem['idFan']
+        self._attr_unique_id = infoSingleSystem['ServiceTag']+"_"+infoSingleSystem['id']+"_"+idx
         self._attr_has_entity_name = True
 
         #coordinator._schedule_refresh()
@@ -126,7 +125,14 @@ class FanSensor(CoordinatorEntity,SensorEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        _LOGGER.info("coordinator data Fans Status: "+str(self.coordinator.data))
+        _LOGGER.info("update the info of the fan: "+self.idx)
+        #_LOGGER.info("coordinator data Fans Status: "+str(self.coordinator.data))
 
-        self._attr_native_value = self.coordinator.data[self.id_fan]
+        value = self.coordinator.data.get(self.idx)
+        if value is None:
+            self._attr_native_value = 0
+        else:
+            self._attr_native_value = value
+
+
         self.async_write_ha_state()

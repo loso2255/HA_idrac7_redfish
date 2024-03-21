@@ -22,7 +22,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpda
 #local import
 
 from ...RedfishApi import RedfishApihub
-from ...const import SERVER_POWER_STATUS_POOL
+from ...const import REQUEST_FOR_STATUS_POWER, SERVER_POWER_STATUS_POOL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ class PowerStatusCoordinator(DataUpdateCoordinator):
         try:
             # Note: asyncio.TimeoutError and aiohttp.ClientError are already
             # handled by the data update coordinator.
-            async with async_timeout.timeout(7):
+            async with async_timeout.timeout(REQUEST_FOR_STATUS_POWER):
 
                 # Grab active context variables to limit data required to be fetched from API
                 # Note: using context is not required if there is no need or ability to limit

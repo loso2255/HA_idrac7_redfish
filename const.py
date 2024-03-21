@@ -27,8 +27,17 @@ DOMAIN = "HA_idrac7_redfish"
 manufacturer = "manufacturer"
 model = "model"
 
+
 DELAY_TIME = 'time_delay'
+
+#Delay polling time
 SERVER_POWER_STATUS_POOL = 5
+
+#TIMEOUT API request
+REQUEST_FOR_STATUS_POWER = 7
+REQUEST_FOR_STATUS_HEALTH = 7
+REQUEST_FOR_FAN_SPEED = 10
+
 
 ####################################################################
 #
