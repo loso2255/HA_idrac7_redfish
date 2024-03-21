@@ -6,7 +6,7 @@
           "host": "[%key:common::config_flow::data::host%]",
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]",
-          "delay": "pilling time"
+          "time_delay": "polling time"
         }
       }
     },

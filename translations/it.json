@@ -14,7 +14,7 @@
                   "host": "Host",
                   "password": "Password",
                   "username": "Username",
-                  "delay": "tempo di richiesta"
+                  "time_delay": "tempo di richiesta"
               }
           }
       }

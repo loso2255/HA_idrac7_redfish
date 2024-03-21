@@ -11,7 +11,7 @@
       "step": {
           "user": {
               "data": {
-                  "delay": "pilling time",
+                  "time_delay": "polling time",
                   "host": "Host",
                   "password": "Password",
                   "username": "Username"
