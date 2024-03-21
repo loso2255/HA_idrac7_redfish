@@ -6,7 +6,7 @@ DOMAIN = "HA_idrac7_redfish"
 
 
 
-###
+### V1
 # config entry.data example
 # {"authdata":
 #           {CONF_HOST: "0.0.0.0", CONF_USERNAME: "myname", CONF_PASSWORD: "supersecret"},
@@ -16,6 +16,37 @@ DOMAIN = "HA_idrac7_redfish"
 #                                   'Managers':
 #                                             [{'enable': False, 'id': 'iDRAC.Embedded.x'}] }
 #           }
+
+
+#### idea V2
+# config entry.data example
+#{"authdata":
+#           {CONF_HOST: "0.0.0.0", CONF_USERNAME: "myname", CONF_PASSWORD: "supersecret"},
+#  "info":
+#           {"ServiceTag": "xxxxx",  'Members':
+#                                             [{'enable': False, 'id': 'System.Embedded.x',      'DeviceInfo' : {
+#                                                                                                       #'identifier' : { ('DOMAIN', <ServiceTag>: str + <System.Embedded.x> : str ) }
+#                                                                                                       'name' : <HostName> : str
+#                                                                                                       'manufacturer' : str
+#                                                                                                       'model' : str
+#                                                                                                       'sw_version' : <biosVersion> : str
+#
+#
+#                                                                                                       },
+#                                                                                                'Device' : {
+#                                                                                                       'cpuTemp' : listcpuID[]
+#                                                                                                       'fans' : listfansID[]
+#                                                                                                       'PowerStatus' : <id> : str
+#                                                                                                       'TemperatureSensor' : [{'id' : <nameSensor>: str}, ]
+#                                                                                                       'PSU' : listPSUID[]
+#
+#                                                                                                      }
+#                                               }],
+#                                   'Managers':
+#                                             [{'enable': False, 'id': 'iDRAC.Embedded.x'}] }
+#           }
+
+
 
 
 ##################################
@@ -36,7 +67,7 @@ SERVER_POWER_STATUS_POOL = 5
 #TIMEOUT API request
 REQUEST_FOR_STATUS_POWER = 7
 REQUEST_FOR_STATUS_HEALTH = 7
-REQUEST_FOR_FAN_SPEED = 10
+REQUEST_FOR_FAN_SPEED = 12
 
 
 ####################################################################
@@ -66,7 +97,8 @@ ChassisConsumptions = Template('/redfish/v1/Chassis/$EmbeddedSystemID/Power')
 #Sensor powerPSU
 ChassisPSU = Template('/redfish/v1/Chassis/$EmbeddedSystemID/Power/PowerSupplies/$PSUid')
 
-
+#thermal Senor
+ChassisThermal = Template('/redfish/v1/Chassis/$EmbeddedSystemID/Sensors/Temperatures/$ThermalSensorID')
 
 #Managers
 ManagersGeneral = "/redfish/v1/Managers"
