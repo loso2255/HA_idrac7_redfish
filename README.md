@@ -15,7 +15,8 @@ git clone https://github.com/loso2255/HA_idrac7_redfish
 -----------------------------------------------------
 
 ## IMPORTANT NOTE
-this app is in early stage of development
+- this app is in early stage of development
+- in order to get a correct info retrival from idrac redfish, the initial configuration must be done with the server powered ON (power ON the server before try to add the device to home assistant) 
 
 
 --------------------------------
