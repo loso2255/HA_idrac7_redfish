@@ -28,6 +28,8 @@ from redfish.rest.v1 import (
 from .const import DELAY_TIME, DOMAIN
 from .RedfishApi import RedfishApihub
 from .type_sensor.sensor.Server_Fan_sensor import FanSensor,FansCoordinator
+from .type_sensor.sensor.Server_Power_sensor import ElectricityCoordinator, ElectricitySensor
+
 
 
 
@@ -97,13 +99,19 @@ async def setup_Embedded_System_Fans_speed(hass: HomeAssistant, api : RedfishApi
     coordinator = FansCoordinator(hass, api, infoSingleSystem['id'], infoSingleSystem['PullingTime'])
 
 
-    FansSensor = []
+    toAddSensor = []
     for elm in EmbSysCooledBy:
         _LOGGER.info("add sensorFan for status: "+elm)
-        FansSensor.append( FanSensor(coordinator,  elm, device_info, infoSingleSystem) )
+        toAddSensor.append( FanSensor(coordinator,  elm, device_info, infoSingleSystem) )
+
+    _LOGGER.info("add Power Sensor for status: "+infoSingleSystem['id'])
+    toAddSensor.append(ElectricitySensor(
+        ElectricityCoordinator(hass,api,infoSingleSystem['id'],infoSingleSystem['PullingTime']),
+        "PowerConsumedWatts",device_info,infoSingleSystem)
+    )
 
 
-    async_add_entities(FansSensor,True)
+    async_add_entities(toAddSensor,True)
 
 
     await coordinator.async_config_entry_first_refresh()

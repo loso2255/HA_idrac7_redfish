@@ -3,7 +3,7 @@ import logging
 import redfish
 from redfish.rest.v1 import HttpClient
 
-from .const import ChassisFans, General, ManagersGeneral, SetPowerStatus, SystemSpecific, SystemsGeneral
+from .const import ChassisConsumptions, ChassisFans, General, ManagersGeneral, SetPowerStatus, SystemSpecific, SystemsGeneral
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -223,6 +223,26 @@ class RedfishApihub:
         return str(resp.dict["Reading"])
     # }
 
+    def getElectricitySensor(self, idEmbSys) -> dict[str, any]:
+    # {
+        logged = self.singleton_login()
+
+        resp = logged.get( path = ChassisConsumptions.substitute( {'EmbeddedSystemID' : str(idEmbSys) } ) )
+
+        respDict : dict = {}
+
+        respDict['PowerCapacityWatts'] = resp.dict.get('PowerCapacityWatts')
+        respDict['PowerConsumedWatts'] = resp.dict.get('PowerConsumedWatts')
+
+
+        Powerlimit = resp.dict['PowerLimit'] #LimitInWatts
+        if Powerlimit is not None:
+            respDict['PowerLimitWatts'] = Powerlimit['LimitInWatts']
+            respDict['PowerLimitPolicy'] = Powerlimit['LimitException']
+
+
+        return respDict
+    # }
 
 
 

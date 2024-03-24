@@ -130,7 +130,7 @@ class FanSensor(CoordinatorEntity,SensorEntity):
 
         value = self.coordinator.data.get(self.idx)
         if value is None:
-            self._attr_native_value = 0
+            self._attr_native_value = None
         else:
             self._attr_native_value = value
 
