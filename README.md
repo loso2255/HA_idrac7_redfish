@@ -31,7 +31,7 @@ git clone https://github.com/loso2255/HA_idrac7_redfish
     -  power status [OK]
     -  general Health Status [OK]
     -  Fan RPM speed [OK]
-    -  Power Usage [future]
+    -  Power Usage [OK]
     -  PSU input voltage [future]
 
 -  add button:
