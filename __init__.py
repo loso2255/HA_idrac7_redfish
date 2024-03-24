@@ -56,6 +56,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         raise ConfigEntryNotReady("name server: [" + entry.data["info"]["ServiceTag"] + "] invalid_auth")
 
     else:
+        if ActualServiceTag is None:
+            _LOGGER.error(msg="error can't gather info")
+            raise ConfigEntryNotReady(msg= "recive null ServiceTag")
+        
         if ActualServiceTag != entry.data["info"]["ServiceTag"]:
             _LOGGER.error(msg="error not excepted service tag")
 
