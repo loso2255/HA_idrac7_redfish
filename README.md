@@ -31,10 +31,10 @@ git clone https://github.com/loso2255/HA_idrac7_redfish
     -  power status [OK]
     -  general Health Status [OK]
     -  Fan RPM speed [OK]
-    -  Power Status [future]
+    -  Power Usage [future]
     -  PSU input voltage [future]
 
 -  add button:
     -  button for change power status of the server [OK]
   
-- each sub_device can be registered or not in the config_flow (and later added or removed)  [for the future]
+- each sub_device can be registered or not in the config_flow (and later added or removed)  [future]
