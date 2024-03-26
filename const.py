@@ -68,6 +68,7 @@ SERVER_POWER_STATUS_POOL = 5
 REQUEST_FOR_STATUS_POWER = 7
 REQUEST_FOR_STATUS_HEALTH = 7
 REQUEST_FOR_FAN_SPEED = 12
+REQUEST_FOR_ELECTRICITY_SENSOR = 4
 
 
 ####################################################################
@@ -93,7 +94,7 @@ ChassisReset = Template("/redfish/v1/Chassis/$EmbeddedSystemID/Actions/Chassis.R
 ChassisFans = Template('/redfish/v1/Chassis/$EmbeddedSystemID/Sensors/Fans/$FanID')
 
 #PowerConsumptions
-ChassisConsumptions = Template('/redfish/v1/Chassis/$EmbeddedSystemID/Power')
+ChassisConsumptions = Template('/redfish/v1/Chassis/$EmbeddedSystemID/Power/PowerControl')
 #Sensor powerPSU
 ChassisPSU = Template('/redfish/v1/Chassis/$EmbeddedSystemID/Power/PowerSupplies/$PSUid')
 
