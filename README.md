@@ -10,7 +10,7 @@ mkdir custom_components
 
 cd custom_components
 
-git clone https://github.com/loso2255/HA_idrac7_redfish
+git clone https://github.com/loso2255/HA_idrac7_redfish.git
 
 -----------------------------------------------------
 
