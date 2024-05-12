@@ -33,6 +33,7 @@ git clone https://github.com/loso2255/HA_idrac7_redfish.git
     -  Fan RPM speed [OK]
     -  Power Usage [OK]
     -  PSU input voltage [future]
+    -  Temperature from idrac [future]
 
 -  add button:
     -  button for change power status of the server [OK]
