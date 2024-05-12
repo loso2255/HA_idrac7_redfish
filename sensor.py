@@ -62,7 +62,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
         if EmbSys["enable"] is False:
 
             _LOGGER.info(msg="form Server: "+info['ServiceTag']+"   setup sensor for: "+ EmbSys['id'])
-            status = await setup_Embedded_System_Fans_speed(hass= hass, api= api, async_add_entities= async_add_entities, infoSingleSystem= infoSingleSystem)
+            status = await setup_Embedded_System_Sensor(hass= hass, api= api, async_add_entities= async_add_entities, infoSingleSystem= infoSingleSystem)
 
 
 
@@ -78,7 +78,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     return None
 
 
-async def setup_Embedded_System_Fans_speed(hass: HomeAssistant, api : RedfishApihub, async_add_entities: AddEntitiesCallback, infoSingleSystem : dict):
+async def setup_Embedded_System_Sensor(hass: HomeAssistant, api : RedfishApihub, async_add_entities: AddEntitiesCallback, infoSingleSystem : dict):
 
     EmbSysInfo = await hass.async_add_executor_job(api.getEmbSysInfo, infoSingleSystem['id'])
     _LOGGER.info(msg="identificativo device: " + str(infoSingleSystem['ServiceTag']+"_"+infoSingleSystem['id']) )
@@ -97,13 +97,18 @@ async def setup_Embedded_System_Fans_speed(hass: HomeAssistant, api : RedfishApi
     EmbSysCooledBy = await hass.async_add_executor_job(api.getEmbeddedSystemCooledBy, infoSingleSystem['id'])
 
     coordinator = FansCoordinator(hass, api, infoSingleSystem['id'], infoSingleSystem['PullingTime'])
+    await coordinator.async_config_entry_first_refresh()
 
 
     toAddSensor = []
+
+    #add fans sensor
     for elm in EmbSysCooledBy:
         _LOGGER.info("add sensorFan for status: "+elm)
         toAddSensor.append( FanSensor(coordinator,  elm, device_info, infoSingleSystem) )
 
+
+    #add Power sensor sensor
     _LOGGER.info("add Power Sensor for status: "+infoSingleSystem['id'])
     toAddSensor.append(ElectricitySensor(
         ElectricityCoordinator(hass,api,infoSingleSystem['id'],infoSingleSystem['PullingTime']),
@@ -111,10 +116,17 @@ async def setup_Embedded_System_Fans_speed(hass: HomeAssistant, api : RedfishApi
     )
 
 
+    #TODO add temp sensor
+
+
+    #TODO add PSU sensor
+
+
     async_add_entities(toAddSensor,True)
 
 
-    await coordinator.async_config_entry_first_refresh()
+    coordinator.async_update_listeners()
+
 
 
     return True
