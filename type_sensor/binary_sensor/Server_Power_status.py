@@ -110,9 +110,12 @@ class PowerStatusBinarySensor(CoordinatorEntity,BinarySensorEntity):
 
         self._attr_is_on = self.coordinator.data[self.idx]["state"]
 
-        if self.coordinator.data[self.idx]["state"] == "On":
-            self._attr_is_on = True
-        else:
-            self._attr_is_on = False
+        if self.coordinator.data.get(self.idx) is not None:
+            value = self.coordinator.data.get(self.idx)
+
+            if value.get("state") == "On":
+                self._attr_is_on = True
+            else:
+                self._attr_is_on = False
 
         self.async_write_ha_state()
