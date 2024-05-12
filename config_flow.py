@@ -13,7 +13,7 @@ from redfish.rest.v1 import (
 
 
 import voluptuous as vol
-from homeassistant.config_entries import ConfigFlow
+from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME, CONF_DELAY
 from homeassistant.core import HomeAssistant
@@ -57,7 +57,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
         self.iDrac_list: dict[str, Any] = {}
 
     # ConfigFlowResult non yet implemented use FlowResult
-    async def async_step_user( self, user_input: dict[str, Any] | None = None ) -> FlowResult:
+    async def async_step_user( self, user_input: dict[str, Any] | None = None ) -> ConfigFlowResult:
         """Handle the initial step."""
 
         errors: dict[str, str] = {}
@@ -68,31 +68,27 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
                 info = await validate_input(self.hass, user_input)
 
             except RetriesExhaustedError:
-                _LOGGER.exception(
-                    msg="name server: ["+ user_input[CONF_HOST]+ "] Retries Exhausted: maybe the server is unreachable"
-                )
+                _LOGGER.exception(msg="name server: ["+ user_input[CONF_HOST]+ "] Retries Exhausted: maybe the server is unreachable")
+
                 errors["base"] = "Retries Exhausted: maybe the server is unreachable"
 
             except ServerDownOrUnreachableError:
-                _LOGGER.exception(
-                    msg="name server: ["+ user_input[CONF_HOST]+ "] server unreachable"
-                )
+                _LOGGER.exception(msg="name server: ["+ user_input[CONF_HOST]+ "] server unreachable")
+
                 errors["base"] = "server unreachable"
 
             except SessionCreationError:
-                _LOGGER.exception(
-                    msg="name server: ["+ user_input[CONF_HOST]+ "] can't connect to server"
-                )
+                _LOGGER.exception(msg="name server: ["+ user_input[CONF_HOST]+ "] can't connect to server")
+
                 errors["base"] = "cannot_connect"
 
             except InvalidCredentialsError:
-                _LOGGER.exception(
-                    msg="name server: [" + user_input[CONF_HOST] + "] invalid_auth"
-                )
+                _LOGGER.exception(msg="name server: [" + user_input[CONF_HOST] + "] invalid_auth")
                 errors["base"] = "invalid_auth"
 
             except Exception as exp:
                 _LOGGER.exception(msg="name server: [" + "" + "]" + str(exp))
+                
                 errors["base"] = "unknown exception"
                 return self.async_abort(reason="unknown exception check logs")
 
@@ -162,6 +158,10 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
     hub = RedfishApihub(data[CONF_HOST], data[CONF_USERNAME], data[CONF_PASSWORD])
     info = await hass.async_add_executor_job(hub.getRedfishInfo)
+
+    #get DeviceInfo
+
+    #get ChassisInfo
 
     system_info = {}
     system_info["authdata"] = data

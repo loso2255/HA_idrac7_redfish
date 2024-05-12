@@ -85,7 +85,7 @@ async def setup_Embedded_System_entry(hass: HomeAssistant, api : RedfishApihub, 
 
     device_info = DeviceInfo(
                 #  esempio {('domain', DOMAIN), ('serial', "ServiceTag_Embedded.System.1")}
-        identifiers={ (DOMAIN, str(infoSingleSystem['ServiceTag']+"_"+infoSingleSystem['id']))  },
+        identifiers={ (DOMAIN, str(infoSingleSystem['ServiceTag']+"_"+infoSingleSystem['id'])) },
         name=EmbSysInfo["name"],
         manufacturer=EmbSysInfo['manufacturer'],
         model=EmbSysInfo['model'],
@@ -94,8 +94,10 @@ async def setup_Embedded_System_entry(hass: HomeAssistant, api : RedfishApihub, 
     )
 
     coordinator = PowerStatusCoordinator(hass, api)
-
     coordinator2 = HealthStatusCoordinator(hass,api, infoSingleSystem['PullingTime'])
+
+    await coordinator.async_config_entry_first_refresh()
+    await coordinator2.async_config_entry_first_refresh()
 
 
     async_add_entities(
@@ -104,9 +106,8 @@ async def setup_Embedded_System_entry(hass: HomeAssistant, api : RedfishApihub, 
             HealthStatusBinarySensor(coordinator2, infoSingleSystem['id'], device_info, infoSingleSystem )
     ],True)
 
-    await coordinator.async_config_entry_first_refresh()
-    await coordinator2.async_config_entry_first_refresh()
-
+    coordinator.async_update_listeners()
+    coordinator2.async_update_listeners()
 
 
     return True
