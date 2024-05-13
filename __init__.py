@@ -61,7 +61,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _LOGGER.error(msg="error not excepted service tag")
 
             await hass.async_add_executor_job(api.__del__)
-            raise ConfigEntryNotReady(msg= "error not excepted service tag")
+            raise ConfigEntryNotReady("error not excepted service tag")
 
         # TODO 3. Store an API object for your platforms to access
         # hass.data[DOMAIN][entry.entry_id] = MyApi(...)
@@ -99,7 +99,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     if unload_ok_BinarySensor:
         api : RedfishApi = hass.data[DOMAIN].pop(entry.entry_id)
-        await hass.async_add_executor_job(api.__del__)
+        try:
+            await hass.async_add_executor_job(api.__del__)
+            
+        except Exception as err:
+            _LOGGER.error(msg="can't contact the server on unload entry")
 
     return unload_ok_BinarySensor
 
