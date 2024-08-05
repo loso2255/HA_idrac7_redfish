@@ -6,36 +6,23 @@ import logging
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 
-#platoform import
-from homeassistant.components.binary_sensor import BinarySensorEntity, BinarySensorDeviceClass, \
-    BinarySensorEntityDescription
 
 #entity import
-from homeassistant.exceptions import PlatformNotReady
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.const import CONF_DELAY
-
-from redfish.rest.v1 import (
-    InvalidCredentialsError,
-    RetriesExhaustedError,
-    ServerDownOrUnreachableError,
-    SessionCreationError,
-)
 
 
 # local import
-from .const import DELAY_TIME, DOMAIN
+from .const import DELAY_TIME, DOMAIN, FANS, TotalWattConsumption
 from .RedfishApi import RedfishApihub
-from .type_sensor.sensor.Server_Fan_sensor import FanSensor,FansCoordinator
-from .type_sensor.sensor.Server_Power_sensor import ElectricityCoordinator, ElectricitySensor
+from .type_sensor.sensor.SensorCoordinator import SensorCoordinator
+from .type_sensor.sensor.Server_Fan_sensor import FanSensor
+from .type_sensor.sensor.Server_Power_sensor import ElectricitySensor
 
 
 
 
 _LOGGER = logging.getLogger(__name__)
-
-from datetime import timedelta
 
 
 
@@ -96,7 +83,7 @@ async def setup_Embedded_System_Sensor(hass: HomeAssistant, api : RedfishApihub,
 
     EmbSysCooledBy = await hass.async_add_executor_job(api.getEmbeddedSystemCooledBy, infoSingleSystem['id'])
 
-    coordinator = FansCoordinator(hass, api, infoSingleSystem['id'], infoSingleSystem['PullingTime'])
+    coordinator = SensorCoordinator(hass, api, infoSingleSystem['id'], infoSingleSystem['PullingTime'])
     await coordinator.async_config_entry_first_refresh()
 
 
@@ -105,15 +92,12 @@ async def setup_Embedded_System_Sensor(hass: HomeAssistant, api : RedfishApihub,
     #add fans sensor
     for elm in EmbSysCooledBy:
         _LOGGER.info("add sensorFan for status: "+elm)
-        toAddSensor.append( FanSensor(coordinator,  elm, device_info, infoSingleSystem) )
+        toAddSensor.append( FanSensor(coordinator,  str({"type": FANS, "id": elm}), device_info, infoSingleSystem) )
 
 
     #add Power sensor sensor
     _LOGGER.info("add Power Sensor for status: "+infoSingleSystem['id'])
-    toAddSensor.append(ElectricitySensor(
-        ElectricityCoordinator(hass,api,infoSingleSystem['id'],infoSingleSystem['PullingTime']),
-        "PowerConsumedWatts",device_info,infoSingleSystem)
-    )
+    toAddSensor.append( ElectricitySensor(coordinator, str({"type": TotalWattConsumption, "id": infoSingleSystem['id']}), device_info, infoSingleSystem) )
 
 
     #TODO add temp sensor
@@ -122,9 +106,10 @@ async def setup_Embedded_System_Sensor(hass: HomeAssistant, api : RedfishApihub,
     #TODO add PSU sensor
 
 
+
+    #add sensor
     async_add_entities(toAddSensor,True)
-
-
+    #schedule first update
     coordinator.async_update_listeners()
 
 

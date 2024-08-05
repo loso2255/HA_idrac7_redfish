@@ -49,7 +49,7 @@ class RedfishApihub:
         elif self.logget is not None:
 
             #test sessions
-            _LOGGER.info(msg="test session")
+            _LOGGER.info(msg="Test session")
             res = self.logget.get(ManagersGeneral)
 
             if res.status == 401:
@@ -57,7 +57,7 @@ class RedfishApihub:
                 self.logget.login(username=self.user, password=self.password)
 
             else:
-                _LOGGER.info(msg="session ok")
+                _LOGGER.info(msg="Session ok")
 
             return self.logget
 
@@ -111,7 +111,7 @@ class RedfishApihub:
         logged = self.singleton_login()
 
         resp = logged.get(ManagersGeneral)
-        lsEmmeddedManagers = resp.dict["Members"]
+        lsEmmeddedManagers = resp.dict.get("Members")
 
         Managers = []
 
@@ -140,6 +140,7 @@ class RedfishApihub:
     # setup functions
 
     def getEmbSysInfo(self, idEmbSys) -> dict[str, str]:
+    # {
         logged = self.singleton_login()
 
         dictionary = {}
@@ -147,20 +148,23 @@ class RedfishApihub:
         resRedfish = logged.get(SystemSpecific.substitute({'EmbeddedSystemID' : str(idEmbSys)}))
         #_LOGGER.info(msg=str(resRedfish))
 
-        dictionary["name"] = resRedfish.dict['HostName']
-        dictionary["model"] = resRedfish.dict['Model']
-        dictionary["manufacturer"] = resRedfish.dict['Manufacturer']
-        dictionary["sw_version"] = resRedfish.dict['BiosVersion']
+        dictionary["name"] = resRedfish.dict.get('HostName')
+        dictionary["model"] = resRedfish.dict.get('Model')
+        dictionary["manufacturer"] = resRedfish.dict.get('Manufacturer')
+        dictionary["sw_version"] = resRedfish.dict.get('BiosVersion')
 
         return dictionary
+    # }
 
     def getEmbSysPowerActions(self, idEmbSys) -> list[str]:
+    # {
         logged = self.singleton_login()
 
         resRedfish = logged.get(SystemSpecific.substitute({'EmbeddedSystemID' : str(idEmbSys)}))
         #_LOGGER.info(msg=str(resRedfish))
 
-        return resRedfish.dict['Actions']['#ComputerSystem.Reset']['ResetType@Redfish.AllowableValues']
+        return resRedfish.dict.get('Actions').get('#ComputerSystem.Reset').get('ResetType@Redfish.AllowableValues')
+    # }
 
 
     def getEmbeddedSystemCooledBy(self, idEmbSys) -> list[str]:
@@ -168,21 +172,19 @@ class RedfishApihub:
         logged = self.singleton_login()
 
         resp = logged.get(SystemSpecific.substitute({'EmbeddedSystemID' : str(idEmbSys)}))
-        lsFan = resp.dict["Links"]["CooledBy"]
+        lsFan = resp.dict.get("Links",{}).get("CooledBy")
         _LOGGER.info( "all fans cooling raw: " + str(lsFan) )
 
         fanID = []
 
         for elm in lsFan:
-            id_elm = elm["@odata.id"].split("/")
+            id_elm = elm.get("@odata.id").split("/")
             fanID.append( id_elm[(len(id_elm) - 1)] )
 
         return fanID
     # }
 
 
-
-    #
     # poolling functions
 
     def getpowerState(self, idEmbSys) -> dict[str, str]:
@@ -191,7 +193,7 @@ class RedfishApihub:
         dictionary = {}
 
         resRedfish = logged.get(SystemSpecific.substitute({'EmbeddedSystemID' : str(idEmbSys)}))
-        dictionary["state"] = resRedfish.dict['PowerState']
+        dictionary["state"] = resRedfish.dict.get('PowerState')
 
         return dictionary
 
@@ -202,25 +204,19 @@ class RedfishApihub:
         dictionary = {}
 
         resRedfish = logged.get(SystemSpecific.substitute({'EmbeddedSystemID' : str(idEmbSys)}))
-        dictionary["health"] = resRedfish.dict['Status']['Health']
+        dictionary["health"] = resRedfish.dict.get('Status').get('Health')
 
         return dictionary
-
-    def pressPowerStatusButton(self, idEmbSys , actions : str):
-        logged = self.singleton_login()
-
-        resRedfish = logged.post(path=SetPowerStatus.substitute({'EmbeddedSystemID' : str(idEmbSys)}), body={ 'ResetType': actions } )
-        #_LOGGER.info("res status power button: "+str(resRedfish.status))
-        #_LOGGER.info("res power button: "+str(resRedfish))
 
 
     def getFanSensor(self, idEmbSys, idFan):
     # {
         logged = self.singleton_login()
+        _LOGGER.info(msg="preso sensore fans: "+idFan)
 
         resp = logged.get( path = ChassisFans.substitute( {'EmbeddedSystemID' : str(idEmbSys), 'FanID': str(idFan) } ) )
 
-        return str(resp.dict["Reading"])
+        return str(resp.dict.get("Reading"))
     # }
 
     def getElectricitySensor(self, idEmbSys) -> dict[str, any]:
@@ -235,13 +231,26 @@ class RedfishApihub:
         respDict['PowerConsumedWatts'] = resp.dict.get('PowerConsumedWatts')
 
 
-        Powerlimit = resp.dict['PowerLimit'] #LimitInWatts
+        Powerlimit = resp.dict.get('PowerLimit') #LimitInWatts
         if Powerlimit is not None:
-            respDict['PowerLimitWatts'] = Powerlimit['LimitInWatts']
-            respDict['PowerLimitPolicy'] = Powerlimit['LimitException']
+            respDict['PowerLimitWatts'] = Powerlimit.get('LimitInWatts')
+            respDict['PowerLimitPolicy'] = Powerlimit.get('LimitException')
 
 
         return respDict
+    # }
+
+
+    ## azioni
+
+    # power actions
+    def pressPowerStatusButton(self, idEmbSys , actions : str):
+    # {
+        logged = self.singleton_login()
+
+        resRedfish = logged.post(path=SetPowerStatus.substitute({'EmbeddedSystemID' : str(idEmbSys)}), body={ 'ResetType': actions } )
+        #_LOGGER.info("res status power button: "+str(resRedfish.status))
+        #_LOGGER.info("res power button: "+str(resRedfish))
     # }
 
 
@@ -263,10 +272,10 @@ class RedfishApihub:
         resRedfish = logged.get(SystemSpecific.substitute({'EmbeddedSystemID' : str(idManiDrac)}))
         #_LOGGER.info(msg=str(resRedfish))
 
-        dictionary["name"] = resRedfish.dict['name']
+        dictionary["name"] = resRedfish.dict.get('name')
         #dictionary["model"] = resRedfish.dict['Model']
         #dictionary["manufacturer"] = resRedfish.dict['Manufacturer']
-        dictionary["sw_version"] = resRedfish.dict['FirmwareVersion']
+        dictionary["sw_version"] = resRedfish.dict.get('FirmwareVersion')
 
         return dictionary
 

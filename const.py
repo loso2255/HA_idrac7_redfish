@@ -33,7 +33,7 @@ DOMAIN = "HA_idrac7_redfish"
 #
 #
 #                                                                                                       },
-#                                                                                                'Device' : {
+#                                                                                                'ChassisInfo' : {
 #                                                                                                       'cpuTemp' : listcpuID[]
 #                                                                                                       'fans' : listfansID[]
 #                                                                                                       'PowerStatus' : <id> : str
@@ -70,6 +70,14 @@ REQUEST_FOR_STATUS_HEALTH = 7
 REQUEST_FOR_FAN_SPEED = 12
 REQUEST_FOR_ELECTRICITY_SENSOR = 4
 
+#type of sensor
+FANS = "Fan"
+TotalWattConsumption = "PowerConsumedWatts"
+InletTemp = "inletTemp"
+ExaustTemp = "outTemp"
+CPUTemp = "cpuTemp"
+
+
 
 ####################################################################
 #
@@ -99,7 +107,9 @@ ChassisConsumptions = Template('/redfish/v1/Chassis/$EmbeddedSystemID/Power/Powe
 ChassisPSU = Template('/redfish/v1/Chassis/$EmbeddedSystemID/Power/PowerSupplies/$PSUid')
 
 #thermal Senor
+ChassisGenThermal = Template("/redfish/v1/Chassis/$EmbeddedSystemID/Thermal")
 ChassisThermal = Template('/redfish/v1/Chassis/$EmbeddedSystemID/Sensors/Temperatures/$ThermalSensorID')
+
 
 #Managers
 ManagersGeneral = "/redfish/v1/Managers"

@@ -29,13 +29,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
     hass.data.setdefault(DOMAIN, {})
-    # TODO 1. Create API instance
+    #1. Create API instance
     #_LOGGER.info(msg="qualche info in piu entry config:"+str(entry))
     #_LOGGER.info(msg="qualche info in piu entry config:"+str(entry.data))
 
     api = RedfishApihub(ip=entry.data["authdata"][CONF_HOST],user=entry.data["authdata"][CONF_USERNAME],password=entry.data["authdata"][CONF_PASSWORD])
 
-    #2. Validate the API connection (and authentication)
+    #2. Validate the API connection
     try:
         ActualServiceTag  = await hass.async_add_executor_job(api.getServiceTag)
 
@@ -43,47 +43,68 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.error(msg="name server: ["+ entry.data["info"]["ServiceTag"]+ "] Retries Exhausted: maybe the server is unreachable")
         raise ConfigEntryNotReady("Connection error while connecting to: "+entry.data["info"]["ServiceTag"])
 
-    except SessionCreationError:
-        _LOGGER.exception( msg="name server: [" + entry.data["info"]["ServiceTag"] + "] Session Creation Error")
-        raise ConfigEntryNotReady("name server: [" + entry.data["info"]["ServiceTag"] + "] Session Creation Error")
-
-    except InvalidCredentialsError:
-        _LOGGER.exception( msg="name server: [" + entry.data["info"]["ServiceTag"] + "] invalid_auth")
-        raise ConfigEntryNotReady("name server: [" + entry.data["info"]["ServiceTag"] + "] invalid_auth")
-
     except Exception as exp:
         _LOGGER.exception(msg="name server: [" + entry.data["info"]["ServiceTag"] + "]" + str(exp))
-        raise ConfigEntryNotReady("name server: [" + entry.data["info"]["ServiceTag"] + "] invalid_auth")
+        raise ConfigEntryNotReady("name server: [" + entry.data["info"]["ServiceTag"] + "] not knowing error")
+
 
     else:
-        
+        #connection valid check service tag
         if ActualServiceTag != entry.data["info"]["ServiceTag"]:
             _LOGGER.error(msg="error not excepted service tag")
 
             await hass.async_add_executor_job(api.__del__)
             raise ConfigEntryNotReady("error not excepted service tag")
 
-        # TODO 3. Store an API object for your platforms to access
-        # hass.data[DOMAIN][entry.entry_id] = MyApi(...)
-        hass.data[DOMAIN][entry.entry_id] = api
+        else:
+            #check credentials and session creation
+            try:
+                await hass.async_add_executor_job(api.singleton_login)
 
-        await hass.async_create_task(
-            hass.config_entries.async_forward_entry_setup(
-                entry, Platform.BINARY_SENSOR
-            )
-        )
+                #3. Store an API object for your platforms to access
+                # hass.data[DOMAIN][entry.entry_id] = MyApi(...)
 
-        await hass.async_create_task(
-            hass.config_entries.async_forward_entry_setup(
-                entry, Platform.SENSOR
-            )
-        )
+                _LOGGER.info(msg="#### controllo singleton login successo ######")
+                #Store an API object
+                hass.data[DOMAIN][entry.entry_id] = api
 
-        await hass.async_create_task(
-            hass.config_entries.async_forward_entry_setup(
-                entry, Platform.BUTTON
-            )
-        )
+                #sensori di health e power status
+                await hass.async_create_task(
+                    hass.config_entries.async_forward_entry_setup(
+                        entry, Platform.BINARY_SENSOR
+                    )
+                )
+
+                # bottoni di power effect
+                await hass.async_create_task(
+                    hass.config_entries.async_forward_entry_setup(
+                        entry, Platform.BUTTON
+                    )
+                )
+
+                # sensori di temp, fans, ecc..
+                await hass.async_create_task(
+                    hass.config_entries.async_forward_entry_setup(
+                        entry, Platform.SENSOR
+                    )
+                )
+
+            except SessionCreationError:
+                _LOGGER.exception( msg="name server: [" + entry.data["info"]["ServiceTag"] + "] Session Creation Error")
+                raise ConfigEntryNotReady("name server: [" + entry.data["info"]["ServiceTag"] + "] Session Creation Error")
+
+            except InvalidCredentialsError:
+                _LOGGER.exception( msg="name server: [" + entry.data["info"]["ServiceTag"] + "] invalid_auth")
+                raise ConfigEntryNotReady("name server: [" + entry.data["info"]["ServiceTag"] + "] invalid_auth")
+
+            except RetriesExhaustedError:
+                _LOGGER.error(msg="name server: ["+ entry.data["info"]["ServiceTag"]+ "] Retries Exhausted: maybe the server is unreachable")
+                raise ConfigEntryNotReady("Connection error while connecting to: "+entry.data["info"]["ServiceTag"])
+
+            except Exception as exp:
+                _LOGGER.exception(msg="name server: [" + entry.data["info"]["ServiceTag"] + "]" + str(exp))
+                raise ConfigEntryNotReady("name server: [" + entry.data["info"]["ServiceTag"] + "] Generic Exception")
+
 
 
     return True
@@ -101,9 +122,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         api : RedfishApi = hass.data[DOMAIN].pop(entry.entry_id)
         try:
             await hass.async_add_executor_job(api.__del__)
-            
+
         except Exception as err:
-            _LOGGER.error(msg="can't contact the server on unload entry")
+            _LOGGER.error(msg="can't contact the server on unload entry "+ err)
 
     return unload_ok_BinarySensor
-
