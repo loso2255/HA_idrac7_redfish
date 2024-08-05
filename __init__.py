@@ -70,21 +70,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
                 #sensori di health e power status
                 await hass.async_create_task(
-                    hass.config_entries.async_forward_entry_setup(
+                    hass.config_entries.async_forward_entry_setups(
                         entry, Platform.BINARY_SENSOR
                     )
                 )
 
                 # bottoni di power effect
                 await hass.async_create_task(
-                    hass.config_entries.async_forward_entry_setup(
+                    hass.config_entries.async_forward_entry_setups(
                         entry, Platform.BUTTON
                     )
                 )
 
                 # sensori di temp, fans, ecc..
                 await hass.async_create_task(
-                    hass.config_entries.async_forward_entry_setup(
+                    hass.config_entries.async_forward_entry_setups(
                         entry, Platform.SENSOR
                     )
                 )

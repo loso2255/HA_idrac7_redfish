@@ -108,7 +108,7 @@ class HealthStatusBinarySensor(CoordinatorEntity,BinarySensorEntity):
         """Handle updated data from the coordinator."""
         _LOGGER.info("coordinator data Health: "+str(self.coordinator.data))
 
-        if self.coordinator.data[self.idx]["health"] == "OK":
+        if self.coordinator.data.get(self.idx,{}).get("health") == "OK":
             self._attr_is_on = False
         else:
             self._attr_is_on = True
