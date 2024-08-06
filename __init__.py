@@ -68,26 +68,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 #Store an API object
                 hass.data[DOMAIN][entry.entry_id] = api
 
-                #sensori di health e power status
                 await hass.async_create_task(
-                    hass.config_entries.async_forward_entry_setups(
-                        entry, Platform.BINARY_SENSOR
-                    )
+                    hass.config_entries.async_forward_entry_setups(entry, [Platform.BINARY_SENSOR, Platform.BUTTON, Platform.SENSOR])
                 )
 
-                # bottoni di power effect
-                await hass.async_create_task(
-                    hass.config_entries.async_forward_entry_setups(
-                        entry, Platform.BUTTON
-                    )
-                )
 
-                # sensori di temp, fans, ecc..
-                await hass.async_create_task(
-                    hass.config_entries.async_forward_entry_setups(
-                        entry, Platform.SENSOR
-                    )
-                )
 
             except SessionCreationError:
                 _LOGGER.exception( msg="name server: [" + entry.data["info"]["ServiceTag"] + "] Session Creation Error")

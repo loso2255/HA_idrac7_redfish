@@ -4,7 +4,7 @@ from string import Template
 
 DOMAIN = "HA_idrac7_redfish"
 
-
+#ciao
 
 ### V1
 # config entry.data example
