@@ -90,7 +90,8 @@ async def setup_Embedded_System_entry(hass: HomeAssistant, api : RedfishApihub, 
         [
             PowerStatusBinarySensor(coordinator, infoSingleSystem['id'], device_info, infoSingleSystem),
             HealthStatusBinarySensor(coordinator2, infoSingleSystem['id'], device_info, infoSingleSystem )
-    ],True)
+
+        ],True)
 
     coordinator.async_update_listeners()
     coordinator2.async_update_listeners()

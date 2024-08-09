@@ -65,19 +65,17 @@ DELAY_TIME = 'time_delay'
 SERVER_POWER_STATUS_POOL = 5
 
 #TIMEOUT API request
-REQUEST_FOR_STATUS_POWER = 7
-REQUEST_FOR_STATUS_HEALTH = 7
-REQUEST_FOR_FAN_SPEED = 12
-REQUEST_FOR_ELECTRICITY_SENSOR = 4
+REQUEST_FOR_STATUS_POWER = 5
+REQUEST_FOR_STATUS_HEALTH = 5
+REQUEST_SENSOR = 6
 
 #type of sensor
 FANS = "Fan"
+WATTSENSOR = "Watt"
+TEMPERATURE = "Temp"
+
+#map sensor to api value
 TotalWattConsumption = "PowerConsumedWatts"
-InletTemp = "inletTemp"
-ExaustTemp = "outTemp"
-CPUTemp = "cpuTemp"
-
-
 
 ####################################################################
 #

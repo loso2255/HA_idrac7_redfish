@@ -3,18 +3,20 @@ from homeassistant.components.sensor import SensorEntity, SensorEntityDescriptio
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
 from homeassistant.core import callback
 
+
+
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpdateCoordinator
 
 
-#local impor
+#local import
 
-from ...const import WATTSENSOR
+from ...const import FANS, REQUEST_SENSOR, REQUEST_FOR_FAN_SPEED, TEMPERATURE, WATTSENSOR
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class ElectricitySensor(CoordinatorEntity,SensorEntity):
+class TemperatureSensor(CoordinatorEntity,SensorEntity):
     """The iDrac's current power sensor entity."""
 
     def __init__(self, coordinator: DataUpdateCoordinator, idx : str, device_info: DeviceInfo, infoSingleSystem : dict) ->None:
@@ -25,10 +27,10 @@ class ElectricitySensor(CoordinatorEntity,SensorEntity):
 
         self.entity_description = SensorEntityDescription(
             key=self.idx.get("type")+""+self.idx.get("id"),
-            name="PowerConsumedWatts",
-            icon='mdi:lightning-bolt',
-            native_unit_of_measurement='W',
-            device_class = SensorDeviceClass.POWER,
+            name=self.idx.get("id"),
+            icon='mdi:thermometer',
+            native_unit_of_measurement='°C',
+            device_class = SensorDeviceClass.TEMPERATURE,
             state_class=SensorStateClass.MEASUREMENT
         )
 
@@ -48,10 +50,11 @@ class ElectricitySensor(CoordinatorEntity,SensorEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        #_LOGGER.info("update the info of the power: "+self.idx.get("id"))
-        #_LOGGER.info("get the info of coordinator: "+str(self.coordinator.data))
 
-        value = self.coordinator.data.get(WATTSENSOR, {} ).get( self.idx.get("id") )
+        #_LOGGER.info("update the info of the power: "+self.idx.get("id"))
+
+        value = self.coordinator.data.get(TEMPERATURE, {} ).get( self.idx.get("id") )
+
         if value is None:
             self._attr_native_value = 0
         else:

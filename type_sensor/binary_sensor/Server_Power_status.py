@@ -1,4 +1,5 @@
 
+import asyncio
 from datetime import timedelta
 import logging
 import sys, os
@@ -71,6 +72,10 @@ class PowerStatusCoordinator(DataUpdateCoordinator):
             # Raising ConfigEntryAuthFailed will cancel future updates
             # and start a config flow with SOURCE_REAUTH (async_step_reauth)
             raise ConfigEntryAuthFailed from err
+
+        except (RuntimeError, asyncio.TimeoutError) as err:
+            _LOGGER.error(msg="Timeout update Sensor General Health sensor")
+
 
         except Exception as err:
             raise UpdateFailed(f"Error communicating with API: {err}")

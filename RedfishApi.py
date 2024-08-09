@@ -3,7 +3,7 @@ import logging
 import redfish
 from redfish.rest.v1 import HttpClient
 
-from .const import ChassisConsumptions, ChassisFans, General, ManagersGeneral, SetPowerStatus, SystemSpecific, SystemsGeneral
+from .const import ChassisConsumptions, ChassisFans, ChassisGenThermal, General, ManagersGeneral, SetPowerStatus, SystemSpecific, SystemsGeneral
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ class RedfishApihub:
 
             self.logget.login(username=self.user, password=self.password)
 
-            _LOGGER.info(msg="maked login")
+            #_LOGGER.info(msg="maked login")
 
             # assert self.logget is not None
             return self.logget
@@ -49,11 +49,11 @@ class RedfishApihub:
         elif self.logget is not None:
 
             #test sessions
-            _LOGGER.info(msg="Test session")
+            #_LOGGER.info(msg="Test session")
             res = self.logget.get(ManagersGeneral)
 
             if res.status == 401:
-                _LOGGER.info("Re oauth in progress")
+                #_LOGGER.info("Re oauth in progress")
                 self.logget.login(username=self.user, password=self.password)
 
             else:
@@ -172,8 +172,9 @@ class RedfishApihub:
         logged = self.singleton_login()
 
         resp = logged.get(SystemSpecific.substitute({'EmbeddedSystemID' : str(idEmbSys)}))
+
         lsFan = resp.dict.get("Links",{}).get("CooledBy")
-        _LOGGER.info( "all fans cooling raw: " + str(lsFan) )
+        #_LOGGER.info( "all fans cooling raw: " + str(lsFan) )
 
         fanID = []
 
@@ -212,12 +213,33 @@ class RedfishApihub:
     def getFanSensor(self, idEmbSys, idFan):
     # {
         logged = self.singleton_login()
-        _LOGGER.info(msg="preso sensore fans: "+idFan)
+        #_LOGGER.info(msg="preso sensore fans: "+idFan)
 
         resp = logged.get( path = ChassisFans.substitute( {'EmbeddedSystemID' : str(idEmbSys), 'FanID': str(idFan) } ) )
 
         return str(resp.dict.get("Reading"))
     # }
+
+    def getAllFan(self, idEmbSys):
+    # {
+        logged = self.singleton_login()
+
+        resp = logged.get( path = ChassisGenThermal.substitute( {'EmbeddedSystemID' : str(idEmbSys) } ) )
+
+        #_LOGGER.info("response temp sensor: ", str(resp))
+        vectorTemp = resp.dict.get("Fans", [])
+
+
+        listAllFanSensorReading = []
+        for elm in vectorTemp:
+
+            tmp = elm.get("@odata.id")
+            listAllFanSensorReading.append( logged.get( path = tmp ).dict )
+
+        #_LOGGER.info("temp apir response: "+str(listTemperatureSensorReading))
+        return listAllFanSensorReading
+    # }
+
 
     def getElectricitySensor(self, idEmbSys) -> dict[str, any]:
     # {
@@ -238,6 +260,27 @@ class RedfishApihub:
 
 
         return respDict
+    # }
+
+    def getTemperatureSensor(self, idEmbSys):
+    # {
+        logged = self.singleton_login()
+
+        resp = logged.get( path = ChassisGenThermal.substitute( {'EmbeddedSystemID' : str(idEmbSys) } ) )
+
+        #_LOGGER.info("response temp sensor: ", str(resp))
+        vectorTemp = resp.dict.get("Temperatures", [])
+
+
+        listTemperatureSensorReading = []
+        for elm in vectorTemp:
+
+            tmp = elm.get("@odata.id")
+            listTemperatureSensorReading.append( logged.get( path = tmp ).dict )
+
+        #_LOGGER.info("temp apir response: "+str(listTemperatureSensorReading))
+        return listTemperatureSensorReading
+
     # }
 
 

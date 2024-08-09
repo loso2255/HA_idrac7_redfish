@@ -13,12 +13,12 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 
 # local import
-from .const import DELAY_TIME, DOMAIN, FANS, TotalWattConsumption
+from .const import DELAY_TIME, DOMAIN, FANS, TEMPERATURE, WATTSENSOR, TotalWattConsumption
 from .RedfishApi import RedfishApihub
 from .type_sensor.sensor.SensorCoordinator import SensorCoordinator
 from .type_sensor.sensor.Server_Fan_sensor import FanSensor
 from .type_sensor.sensor.Server_Power_sensor import ElectricitySensor
-
+from .type_sensor.sensor.Server_Temperature_Sensor import TemperatureSensor
 
 
 
@@ -82,9 +82,10 @@ async def setup_Embedded_System_Sensor(hass: HomeAssistant, api : RedfishApihub,
 
 
     EmbSysCooledBy = await hass.async_add_executor_job(api.getEmbeddedSystemCooledBy, infoSingleSystem['id'])
+    _LOGGER.info("Cooling components: "+ str(EmbSysCooledBy))
 
     coordinator = SensorCoordinator(hass, api, infoSingleSystem['id'], infoSingleSystem['PullingTime'])
-    await coordinator.async_config_entry_first_refresh()
+    #await coordinator.async_config_entry_first_refresh()
 
 
     toAddSensor = []
@@ -97,11 +98,14 @@ async def setup_Embedded_System_Sensor(hass: HomeAssistant, api : RedfishApihub,
 
     #add Power sensor sensor
     _LOGGER.info("add Power Sensor for status: "+infoSingleSystem['id'])
-    toAddSensor.append( ElectricitySensor(coordinator, str({"type": TotalWattConsumption, "id": infoSingleSystem['id']}), device_info, infoSingleSystem) )
+    toAddSensor.append( ElectricitySensor(coordinator, str({"type": WATTSENSOR, "id": TotalWattConsumption}), device_info, infoSingleSystem) )
 
 
     #TODO add temp sensor
-
+    tempSensor = await hass.async_add_executor_job(api.getTemperatureSensor, infoSingleSystem['id'])
+    for elm in tempSensor:
+        _LOGGER.info("add sensorTemp for status: "+elm.get("Name"))
+        toAddSensor.append( TemperatureSensor(coordinator, str({"type": TEMPERATURE, "id": elm.get("Name")}), device_info, infoSingleSystem) )
 
     #TODO add PSU sensor
 
@@ -110,7 +114,8 @@ async def setup_Embedded_System_Sensor(hass: HomeAssistant, api : RedfishApihub,
     #add sensor
     async_add_entities(toAddSensor,True)
     #schedule first update
-    coordinator.async_update_listeners()
+    await coordinator.async_config_entry_first_refresh()
+    #coordinator.async_update_listeners()
 
 
 

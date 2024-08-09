@@ -9,11 +9,13 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpda
 
 #local import
 
+from ...const import FANS
+
 _LOGGER = logging.getLogger(__name__)
 
 
 class FanSensor(CoordinatorEntity,SensorEntity):
-    """The iDrac's current power sensor entity."""
+    """The iDrac's current Fan sensor entity."""
 
     def __init__(self, coordinator: DataUpdateCoordinator, idx : dict, device_info: DeviceInfo, infoSingleSystem : dict) ->None:
 
@@ -50,9 +52,14 @@ class FanSensor(CoordinatorEntity,SensorEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        _LOGGER.info("update the info of the fan: "+self.idx.get("id"))
+        #_LOGGER.info("update the info of the fan: "+self.idx.get("id"))
         #_LOGGER.info("coordinator data Fans Status: "+str(self.coordinator.data))
 
-        self._attr_native_value = self.coordinator.data.get(self.idx.get("id"))
+        value = self.coordinator.data.get(FANS, {}).get(self.idx.get("id"))
+        if value is None:
+            self._attr_native_value = 0
+        else:
+            self._attr_native_value = value
+
 
         self.async_write_ha_state()

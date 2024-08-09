@@ -16,7 +16,7 @@ from redfish.rest.v1 import (
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpdateCoordinator, UpdateFailed
 
-from ...const import FANS, REQUEST_FOR_ELECTRICITY_SENSOR, REQUEST_FOR_FAN_SPEED, InletTemp, TotalWattConsumption
+from ...const import FANS, REQUEST_SENSOR, TEMPERATURE, WATTSENSOR
 from ...RedfishApi import RedfishApihub
 
 _LOGGER = logging.getLogger(__name__)
@@ -44,50 +44,82 @@ class SensorCoordinator(DataUpdateCoordinator):
         try:
 
             listening_idx = set(self.async_contexts())
-            _LOGGER.info("entitys registered for fan speed: "+str(listening_idx))
+            #_LOGGER.info("entitys registered update sensor: "+str(listening_idx))
 
 
 
 
             result : dict = {}
+
+            #set sensor type
+            result[TEMPERATURE] = {}
+            result[FANS] = {}
+            get: int = 0
+
             for elm in listening_idx:
                 elm = eval(elm)
 
+                ##########################################################################
                 # reading "FANS" sensor type
                 if elm.get("type") == FANS:
                     try:
-                        async with async_timeout.timeout(REQUEST_FOR_FAN_SPEED):
+                        async with async_timeout.timeout(REQUEST_SENSOR):
 
-                            _LOGGER.info(msg="reading value of FAN: "+elm.get("id"))
+                            #_LOGGER.info(msg="reading value of FAN: "+elm.get("id"))
                             funSpeed = await self.hass.async_add_executor_job( self.my_api.getFanSensor,  str(self.id_device), str(elm.get("id"))  )
+                            temp = result.get(FANS)
 
                             if funSpeed is None:
-                                result[elm.get("id")] = None
-                            else:
-                                result[elm.get("id")] = funSpeed
+                                temp.update( {elm.get("id"): None} )
 
+                            else:
+                                temp.update( {elm.get("id"): funSpeed} )
+
+                            result[FANS] = temp
 
                     except (RuntimeError, asyncio.TimeoutError) as err:
-                        _LOGGER.info(msg="Fallied update Fan Sensor: "+elm.get("id"))
+                        _LOGGER.error(msg="Timeout update Fan Sensor: "+elm.get("id"))
 
-                # reading "FANS" sensor type
-                elif elm.get("type") == TotalWattConsumption:
+                ##########################################################################
+                # reading "WATTToltal" sensor type
+                elif elm.get("type") == WATTSENSOR:
                     try:
-                        async with async_timeout.timeout(REQUEST_FOR_ELECTRICITY_SENSOR):
+                        async with async_timeout.timeout(REQUEST_SENSOR):
 
-                            _LOGGER.info(msg="reading value of CONSUMPTION: "+elm.get("id"))
+                            #_LOGGER.info(msg="reading value of CONSUMPTION: "+elm.get("id"))
                             resServer = await self.hass.async_add_executor_job( self.my_api.getElectricitySensor,  str(self.id_device)  )
 
                             if resServer is None:
-                                result[elm.get("id")] = None
+                                result[WATTSENSOR] = None
                             else:
-                                result[elm.get("id")] = resServer
+                                result[WATTSENSOR] = resServer
 
 
                     except (RuntimeError, asyncio.TimeoutError) as err:
-                        _LOGGER.info(msg="Fallied update Fan Sensor: "+elm.get("id"))
+                        _LOGGER.error(msg="Timeout update CONSUMPTION Sensor: "+elm.get("id"))
 
-                #TODO reading "Temp" sensor type
+
+                #############################################################################
+                #reading "Temp" sensor type
+                elif (elm.get("type") == TEMPERATURE) and (get == 0):
+                    get = 1 #bad code, reduce amount of request
+
+                    try:
+                        resServer = None
+                        async with async_timeout.timeout(REQUEST_SENSOR):
+
+                            #_LOGGER.info(msg="reading value of temperature: "+elm.get("id"))
+                            resServer = await self.hass.async_add_executor_job( self.my_api.getTemperatureSensor,  str(self.id_device)  )
+
+                        if resServer is None:
+                            result[TEMPERATURE] = None
+                        else:
+                            for elmi in resServer:
+                                result[TEMPERATURE][elmi.get("Name")] = elmi.get("ReadingCelsius")
+
+
+                    except (RuntimeError, asyncio.TimeoutError) as err:
+                        _LOGGER.error(msg="Timeout update temperature Sensor: "+elm.get("id"))
 
 
                 #TODO reading "PSU" voltage Sensor
@@ -103,4 +135,4 @@ class SensorCoordinator(DataUpdateCoordinator):
             raise ConfigEntryAuthFailed from err
 
         except Exception as err:
-            raise UpdateFailed(f"Error communicating with API: {err}")
+            raise UpdateFailed(f"Error communicating with API SensorCoordinator: {err}")
