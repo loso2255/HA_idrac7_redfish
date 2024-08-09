@@ -11,7 +11,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpda
 
 #local import
 
-from ...const import FANS, REQUEST_SENSOR, REQUEST_FOR_FAN_SPEED, TEMPERATURE, WATTSENSOR
+from ...const import FANS, REQUEST_SENSOR, TEMPERATURE, WATTSENSOR
 
 _LOGGER = logging.getLogger(__name__)
 
