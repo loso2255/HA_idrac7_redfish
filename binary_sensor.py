@@ -82,9 +82,6 @@ async def setup_Embedded_System_entry(hass: HomeAssistant, api : RedfishApihub, 
     coordinator = PowerStatusCoordinator(hass, api)
     coordinator2 = HealthStatusCoordinator(hass,api, infoSingleSystem['PullingTime'])
 
-    await coordinator.async_config_entry_first_refresh()
-    await coordinator2.async_config_entry_first_refresh()
-
 
     async_add_entities(
         [
@@ -93,10 +90,14 @@ async def setup_Embedded_System_entry(hass: HomeAssistant, api : RedfishApihub, 
 
         ],True)
 
-    coordinator.async_update_listeners()
-    coordinator2.async_update_listeners()
+    await coordinator.async_config_entry_first_refresh()
+    await coordinator2.async_config_entry_first_refresh()
 
 
+
+
+    #coordinator.async_update_listeners()
+    #coordinator2.async_update_listeners()
     return True
 
 
