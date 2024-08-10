@@ -60,7 +60,7 @@ class PowerStatusCoordinator(DataUpdateCoordinator):
                 # Note: using context is not required if there is no need or ability to limit
                 # data retrieved from API.
                 listening_idx = set(self.async_contexts())
-                _LOGGER.info("idx_info: "+str(listening_idx))
+                #_LOGGER.info("idx_info: "+str(listening_idx))
 
                 result : dict = {}
                 for elm in listening_idx:
@@ -74,11 +74,12 @@ class PowerStatusCoordinator(DataUpdateCoordinator):
             raise ConfigEntryAuthFailed from err
 
         except (RuntimeError, asyncio.TimeoutError) as err:
-            _LOGGER.error(msg="Timeout update Sensor General Health sensor")
+            _LOGGER.error(msg="Timeout update Sensor General Power sensor")
+            raise UpdateFailed(f"Timeout update Sensor General Power sensor: {err}")
 
 
         except Exception as err:
-            raise UpdateFailed(f"Error communicating with API: {err}")
+            raise UpdateFailed(f"Error communicating with API Power Status: {err}")
 
 
 
@@ -114,12 +115,14 @@ class PowerStatusBinarySensor(CoordinatorEntity,BinarySensorEntity):
         _LOGGER.info("coordinator data Power Status: "+str(self.coordinator.data))
 
         #self._attr_is_on = self.coordinator.data[self.idx]["state"]
-        if self.coordinator.data.get(self.idx) is not None:
-            value = self.coordinator.data.get(self.idx)
+        value = self.coordinator.data
+        if value is not None:
+            value = self.coordinator.data.get(self.idx, {})
 
             if value.get("state") == "On":
                 self._attr_is_on = True
             else:
                 self._attr_is_on = False
+
 
         self.async_write_ha_state()

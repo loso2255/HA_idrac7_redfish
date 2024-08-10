@@ -75,6 +75,8 @@ class HealthStatusCoordinator(DataUpdateCoordinator):
 
         except (RuntimeError, asyncio.TimeoutError) as err:
             _LOGGER.error(msg="Timeout update Sensor General Health sensor")
+            raise UpdateFailed(f"Timeout update Sensor General Health sensor: {err}")
+
 
 
         except Exception as err:
@@ -113,8 +115,14 @@ class HealthStatusBinarySensor(CoordinatorEntity,BinarySensorEntity):
         """Handle updated data from the coordinator."""
         _LOGGER.info("coordinator data Health: "+str(self.coordinator.data))
 
-        if self.coordinator.data.get(self.idx,{}).get("health") == "OK":
-            self._attr_is_on = False
+        value = self.coordinator.data
+
+        if value is not None:
+            if value.get(self.idx,{}).get("health") == 'OK':
+                self._attr_is_on = False
+            else:
+                self._attr_is_on = True
+
         else:
             self._attr_is_on = True
 

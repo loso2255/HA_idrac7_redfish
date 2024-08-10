@@ -54,6 +54,8 @@ class SensorCoordinator(DataUpdateCoordinator):
             #set sensor type
             result[TEMPERATURE] = {}
             result[FANS] = {}
+            result[WATTSENSOR] = {}
+
             get: int = 0
 
             for elm in listening_idx:
@@ -70,7 +72,7 @@ class SensorCoordinator(DataUpdateCoordinator):
                             temp = result.get(FANS)
 
                             if funSpeed is None:
-                                temp.update( {elm.get("id"): None} )
+                                temp.update( {elm.get("id"): 0} )
 
                             else:
                                 temp.update( {elm.get("id"): funSpeed} )
@@ -90,7 +92,7 @@ class SensorCoordinator(DataUpdateCoordinator):
                             resServer = await self.hass.async_add_executor_job( self.my_api.getElectricitySensor,  str(self.id_device)  )
 
                             if resServer is None:
-                                result[WATTSENSOR] = None
+                                result[WATTSENSOR] = 0
                             else:
                                 result[WATTSENSOR] = resServer
 
@@ -112,7 +114,7 @@ class SensorCoordinator(DataUpdateCoordinator):
                             resServer = await self.hass.async_add_executor_job( self.my_api.getTemperatureSensor,  str(self.id_device)  )
 
                         if resServer is None:
-                            result[TEMPERATURE] = None
+                            result[TEMPERATURE] = 0
                         else:
                             for elmi in resServer:
                                 result[TEMPERATURE][elmi.get("Name")] = elmi.get("ReadingCelsius")

@@ -194,7 +194,7 @@ class RedfishApihub:
         dictionary = {}
 
         resRedfish = logged.get(SystemSpecific.substitute({'EmbeddedSystemID' : str(idEmbSys)}))
-        dictionary["state"] = resRedfish.dict.get('PowerState')
+        dictionary["state"] = resRedfish.dict.get('PowerState', None)
 
         return dictionary
 
