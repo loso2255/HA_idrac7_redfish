@@ -137,4 +137,4 @@ class SensorCoordinator(DataUpdateCoordinator):
             raise ConfigEntryAuthFailed from err
 
         except Exception as err:
-            raise UpdateFailed(f"Error communicating with API SensorCoordinator: {err}")
+            raise UpdateFailed(f"Error communicating with API SensorCoordinator: {err.with_traceback()}")
