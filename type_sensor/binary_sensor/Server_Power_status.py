@@ -114,7 +114,8 @@ class PowerStatusBinarySensor(CoordinatorEntity,BinarySensorEntity):
         """Handle updated data from the coordinator."""
         _LOGGER.info("coordinator data Power Status: "+str(self.coordinator.data))
 
-        #self._attr_is_on = self.coordinator.data[self.idx]["state"]
+        ##self._attr_is_on "=" self.coordinator.data[self.idx]["state"]
+
         value = self.coordinator.data
         if value is not None:
             value = self.coordinator.data.get(self.idx, {})
