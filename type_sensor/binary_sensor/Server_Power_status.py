@@ -52,10 +52,6 @@ class PowerStatusCoordinator(DataUpdateCoordinator):
         so entities can quickly look up their data.
         """
         try:
-            # Note: asyncio.TimeoutError and aiohttp.ClientError are already
-            # handled by the data update coordinator.
-            async with async_timeout.timeout(REQUEST_FOR_STATUS_POWER):
-
                 # Grab active context variables to limit data required to be fetched from API
                 # Note: using context is not required if there is no need or ability to limit
                 # data retrieved from API.
@@ -64,7 +60,11 @@ class PowerStatusCoordinator(DataUpdateCoordinator):
 
                 result : dict = {}
                 for elm in listening_idx:
-                    result[elm] = await self.hass.async_add_executor_job(self.my_api.getpowerState, elm )
+
+                    # Note: asyncio.TimeoutError and aiohttp.ClientError are already
+                    # handled by the data update coordinator.
+                    async with async_timeout.timeout(REQUEST_FOR_STATUS_POWER):
+                        result[elm] = await self.hass.async_add_executor_job(self.my_api.getpowerState, elm )
 
                 return result
 
