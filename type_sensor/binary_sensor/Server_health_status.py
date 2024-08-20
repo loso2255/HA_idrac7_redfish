@@ -116,7 +116,7 @@ class HealthStatusBinarySensor(CoordinatorEntity,BinarySensorEntity):
 
         value = self.coordinator.data
 
-        if value is not None:
+        if (value == 'None') or (value is None):
             if value.get(self.idx,{}).get("health") == 'OK':
                 self._attr_is_on = False
             else:

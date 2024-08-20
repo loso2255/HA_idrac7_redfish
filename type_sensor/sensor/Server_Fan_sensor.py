@@ -56,7 +56,7 @@ class FanSensor(CoordinatorEntity,SensorEntity):
         #_LOGGER.info("coordinator data Fans Status: "+str(self.coordinator.data))
 
         value = self.coordinator.data.get(FANS, {}).get(self.idx.get("id"))
-        if value is None:
+        if (value == 'None') or (value is None):
             self._attr_native_value = 0
         else:
             self._attr_native_value = value

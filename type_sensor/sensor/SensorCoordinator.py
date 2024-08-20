@@ -71,11 +71,7 @@ class SensorCoordinator(DataUpdateCoordinator):
                             funSpeed = await self.hass.async_add_executor_job( self.my_api.getFanSensor,  str(self.id_device), str(elm.get("id"))  )
                             temp = result.get(FANS)
 
-                            if (funSpeed == 'None') or (funSpeed is None):
-                                temp.update( {elm.get("id"): 0} )
-
-                            else:
-                                temp.update( {elm.get("id"): funSpeed} )
+                            temp.update( {elm.get("id"): funSpeed} )
 
                             #print(str(temp))
                             result[FANS] = temp

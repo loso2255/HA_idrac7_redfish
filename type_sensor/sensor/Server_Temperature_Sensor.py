@@ -55,7 +55,7 @@ class TemperatureSensor(CoordinatorEntity,SensorEntity):
 
         value = self.coordinator.data.get(TEMPERATURE, {} ).get( self.idx.get("id") )
 
-        if value is None:
+        if (value == 'None') or (value is None):
             self._attr_native_value = 0
         else:
             self._attr_native_value = value
