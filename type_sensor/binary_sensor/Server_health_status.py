@@ -116,13 +116,16 @@ class HealthStatusBinarySensor(CoordinatorEntity,BinarySensorEntity):
 
         value = self.coordinator.data
 
-        if (value == 'None') or (value is None):
+
+        if (value is None) or (value.get(self.idx,{}).get("health") == 'None'):
+            self._attr_is_on = True
+
+        else:
+
             if value.get(self.idx,{}).get("health") == 'OK':
                 self._attr_is_on = False
             else:
                 self._attr_is_on = True
 
-        else:
-            self._attr_is_on = True
 
         self.async_write_ha_state()
