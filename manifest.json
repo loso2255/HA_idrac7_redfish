@@ -7,7 +7,7 @@
   ],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://www.home-assistant.io/integrations/idrac7_redfish",
+  "documentation": "https://github.com/loso2255/HA_idrac7_redfish",
   "homekit": {},
   "iot_class": "local_polling",
   "requirements": [
