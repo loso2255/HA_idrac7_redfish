@@ -66,23 +66,23 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
                 info = await validate_input(self.hass, user_input)
 
             except RetriesExhaustedError:
-                _LOGGER.exception("name server: [%s] Retries Exhausted: maybe the server is unreachable", user_input[CONF_HOST])
+                _LOGGER.exception("Name server: [%s] Retries Exhausted: maybe the server is unreachable", user_input[CONF_HOST])
                 errors["base"] = "Retries Exhausted: maybe the server is unreachable"
 
             except ServerDownOrUnreachableError:
-                _LOGGER.exception("name server: [%s] server unreachable", user_input[CONF_HOST])
+                _LOGGER.exception("Name server: [%s] server unreachable", user_input[CONF_HOST])
                 errors["base"] = "server unreachable"
 
             except SessionCreationError:
-                _LOGGER.exception("name server: [%s] can't connect to server", user_input[CONF_HOST])
+                _LOGGER.exception("Name server: [%s] can't connect to server", user_input[CONF_HOST])
                 errors["base"] = "cannot_connect"
 
             except InvalidCredentialsError:
-                _LOGGER.exception("name server: [%s] invalid_auth", user_input[CONF_HOST])
+                _LOGGER.exception("Name server: [%s] invalid_auth", user_input[CONF_HOST])
                 errors["base"] = "invalid_auth"
 
             except Exception as exp:
-                _LOGGER.exception("name server: [] %s", str(exp))
+                _LOGGER.exception("Name server: [] %s", str(exp))
                 errors["base"] = "unknown exception"
                 return self.async_abort(reason="unknown exception check logs")
 
@@ -253,15 +253,13 @@ class OptionsFlowHandler(OptionsFlowWithConfigEntry):
             )
             updated_data["info"]["Managers"] = updated_managers
 
-            # Update config entry
+            # Update config entry data without reloading
             self.hass.config_entries.async_update_entry(
                 self.config_entry,
                 data=updated_data,
             )
 
-            # Trigger entity reload to apply changes
-            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
-
+            # Let Home Assistant handle the reload via update listener
             return self.async_create_entry(title="", data={})
 
         # Create schema for options flow

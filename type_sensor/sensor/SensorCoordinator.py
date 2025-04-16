@@ -46,9 +46,6 @@ class SensorCoordinator(DataUpdateCoordinator):
             listening_idx = set(self.async_contexts())
             #_LOGGER.info("entitys registered update sensor: "+str(listening_idx))
 
-
-
-
             result : dict = {}
 
             #set sensor type
@@ -77,7 +74,7 @@ class SensorCoordinator(DataUpdateCoordinator):
                             result[FANS] = temp
 
                     except (RuntimeError, asyncio.TimeoutError) as err:
-                        _LOGGER.error(msg="Timeout update Fan Sensor: "+elm.get("id"))
+                        _LOGGER.error("Timeout update Fan Sensor: %s", elm.get("id"))
 
                 ##########################################################################
                 # reading "WATTToltal" sensor type
@@ -95,7 +92,7 @@ class SensorCoordinator(DataUpdateCoordinator):
 
 
                     except (RuntimeError, asyncio.TimeoutError) as err:
-                        _LOGGER.error(msg="Timeout update CONSUMPTION Sensor: "+elm.get("id"))
+                        _LOGGER.error("Timeout update CONSUMPTION Sensor: %s", elm.get("id"))
 
 
                 #############################################################################
@@ -114,11 +111,13 @@ class SensorCoordinator(DataUpdateCoordinator):
                             result[TEMPERATURE] = 0
                         else:
                             for elmi in resServer:
-                                result[TEMPERATURE][elmi.get("Name")] = elmi.get("ReadingCelsius")
+                                sensor_name = elmi.get("Name")
+                                if sensor_name:
+                                    result[TEMPERATURE][sensor_name] = elmi.get("ReadingCelsius")
 
 
                     except (RuntimeError, asyncio.TimeoutError) as err:
-                        _LOGGER.error(msg="Timeout update temperature Sensor: "+elm.get("id"))
+                        _LOGGER.error("Timeout update temperature Sensor: %s", elm.get("id"))
 
 
                 #TODO reading "PSU" voltage Sensor
@@ -134,4 +133,5 @@ class SensorCoordinator(DataUpdateCoordinator):
             raise ConfigEntryAuthFailed from err
 
         except Exception as err:
-            raise UpdateFailed(f"Error communicating with API SensorCoordinator: {err.with_traceback()}")
+            # Use proper error handling - don't call with_traceback() without args
+            raise UpdateFailed(f"Error communicating with API SensorCoordinator: {err}") from err

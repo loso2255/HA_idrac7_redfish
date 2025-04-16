@@ -110,7 +110,7 @@ async def setup_Embedded_System_entry(hass: HomeAssistant, api : RedfishApihub, 
     toAddSensor.append( ElectricitySensor(coordinator, str({"type": WATTSENSOR, "id": TotalWattConsumption}), device_info, infoSingleSystem) )
 
 
-    #TODO add temp sensor
+    #add temp sensor
     tempSensor = await hass.async_add_executor_job(api.getTemperatureSensor, infoSingleSystem['id'])
     for elm in tempSensor:
         _LOGGER.info("add sensorTemp for status: "+elm.get("Name"))

@@ -33,36 +33,79 @@ class RedfishApihub:
     #
     ###################
     def singleton_login(self) -> HttpClient:
+        """Create or return an existing authenticated Redfish client session.
 
-        #first login
-        if self.logget is None:
-            self.logget = redfish.redfish_client(base_url="https://" + self.ip, max_retry=1)
+        Returns:
+            HttpClient: Authenticated Redfish client
 
-            #_LOGGER.info(msg="redfish client session before login: "+str(self.logget.get_session_key()))
+        Raises:
+            ConnectionError: If connection to the iDRAC fails
+            InvalidCredentialsError: If authentication fails
+        """
+        try:
+            # First login attempt
+            if self.logget is None:
+                _LOGGER.debug("Creating new Redfish client session")
+                self.logget = redfish.redfish_client(
+                    base_url="https://" + self.ip,
+                    max_retry=3,
+                    timeout=10
+                )
 
-            self.logget.login(username=self.user, password=self.password)
-            #_LOGGER.info(msg="redfish client session after login: "+str(self.logget.get_session_key()))
+                # Attempt login with credentials
+                try:
+                    self.logget.login(username=self.user, password=self.password)
+                    _LOGGER.debug("New Redfish client session created successfully")
+                    return self.logget
+                except Exception as login_err:
+                    self.logget = None
+                    _LOGGER.error("Failed to authenticate with iDRAC: %s", str(login_err))
+                    raise
 
-            #_LOGGER.info(msg="maked login")
+            # Session already exists, verify it's still valid
+            elif self.logget is not None:
+                try:
+                    # Test session with a lightweight request
+                    res = self.logget.get(ManagersGeneral)
 
-            # assert self.logget is not None
+                    # If we get an unauthorized error, re-authenticate
+                    if res.status == 401:
+                        _LOGGER.debug("Session expired, re-authenticating")
+                        self.logget.login(username=self.user, password=self.password)
+                        _LOGGER.debug("Re-authentication successful")
+
+                    return self.logget
+
+                except Exception as session_err:
+                    # If session test fails, try to create a new session
+                    _LOGGER.debug("Session test failed: %s, creating new session", str(session_err))
+                    try:
+                        # Close old session if possible
+                        try:
+                            self.logget.logout()
+                        except Exception:
+                            pass
+
+                        # Create new session
+                        self.logget = redfish.redfish_client(
+                            base_url="https://" + self.ip,
+                            max_retry=3,
+                            timeout=10
+                        )
+                        self.logget.login(username=self.user, password=self.password)
+                        return self.logget
+                    except Exception as create_err:
+                        self.logget = None
+                        _LOGGER.error("Failed to create new Redfish session: %s", str(create_err))
+                        raise
+
             return self.logget
 
-        #if already logged
-        elif self.logget is not None:
+        except Exception as err:
+            # Handle any uncaught exceptions
+            _LOGGER.error("Error in singleton_login: %s", str(err))
+            raise
 
-            #test sessions
-            #_LOGGER.info(msg="Test session")
-            res = self.logget.get(ManagersGeneral)
-
-            if res.status == 401:
-                #_LOGGER.info("Re oauth in progress")
-                self.logget.login(username=self.user, password=self.password)
-
-            else:
-                _LOGGER.info(msg="Session ok")
-
-            return self.logget
 
 
 
@@ -265,27 +308,45 @@ class RedfishApihub:
         return respDict
     # }
 
-    def getTemperatureSensor(self, idEmbSys):
-    # {
-        logged = self.singleton_login()
+    def getTemperatureSensor(self, idDevice : str) -> list:
+        """Get temperature sensor readings for a device.
 
-        resp = logged.get( path = ChassisGenThermal.substitute( {'EmbeddedSystemID' : str(idEmbSys) } ) )
-
-        #_LOGGER.info("response temp sensor: ", str(resp))
-        vectorTemp = resp.dict.get("Temperatures", [])
-
-
+        Returns a list of temperature sensor data.
+        """
         listTemperatureSensorReading = []
-        for elm in vectorTemp:
 
-            tmp = elm.get("@odata.id")
-            listTemperatureSensorReading.append( logged.get( path = tmp ).dict )
+        try:
+            logged = self.connectRedfish()
 
-        #_LOGGER.info("temp apir response: "+str(listTemperatureSensorReading))
+            # Get temperature sensors collection
+            embSystem = logged.get("/redfish/v1/Systems/"+idDevice+"/Thermal")
+
+            # Process each temperature sensor
+            for sensor in embSystem.dict.get('Temperatures', []):
+                # Get the individual sensor URI
+                sensor_uri = sensor.get('@odata.id')
+
+                # Skip if sensor URI is None or invalid
+                if not sensor_uri:
+                    continue
+
+                # Get detailed sensor data
+                try:
+                    sensor_data = logged.get(path=sensor_uri).dict
+                    if sensor_data:
+                        listTemperatureSensorReading.append(sensor_data)
+                except Exception:
+                    # If we can't get detailed data, use the summary data
+                    listTemperatureSensorReading.append(sensor)
+
+            # If no individual sensors were found, use the summary data
+            if not listTemperatureSensorReading and 'Temperatures' in embSystem.dict:
+                listTemperatureSensorReading = embSystem.dict['Temperatures']
+
+        except Exception as e:
+            logging.error("Error getting temperature sensors: %s", e)
+
         return listTemperatureSensorReading
-
-    # }
-
 
     ## azioni
 
@@ -326,10 +387,118 @@ class RedfishApihub:
         return dictionary
 
 
+    ########################
+    #
+    #   SSE Event Support
+    #
+    ########################
 
+    def check_sse_support(self) -> dict[str, bool | str]:
+        """Check if the iDRAC supports Server-Sent Events.
+
+        Returns:
+            dict: Information about SSE support capabilities
+                - "supports_sse": bool - True if SSE is supported
+                - "event_service_supported": bool - True if Event Service endpoint exists
+                - "subscription_supported": bool - True if subscriptions are supported
+                - "version": str - Redfish version
+                - "message": str - Descriptive message about support status
+        """
+        result = {
+            "supports_sse": False,
+            "event_service_supported": False,
+            "subscription_supported": False,
+            "version": "unknown",
+            "message": "SSE not supported"
+        }
+
+        try:
+            logged = self.singleton_login()
+
+            # Check Redfish version
+            root_data = logged.get("/redfish/v1/").dict
+            result["version"] = root_data.get("RedfishVersion", "unknown")
+
+            # Check if EventService exists
+            try:
+                event_service = logged.get("/redfish/v1/EventService")
+                if event_service.status == 200:
+                    result["event_service_supported"] = True
+                    event_data = event_service.dict
+
+                    # Check if SSE is in delivery methods
+                    delivery_methods = event_data.get("DeliveryRetryPolicy", [])
+                    if isinstance(delivery_methods, list) and "SSE" in delivery_methods:
+                        result["supports_sse"] = True
+
+                    # Check EventService capabilities
+                    if event_data.get("ServerSentEventUri"):
+                        result["supports_sse"] = True
+
+                    # Check if subscriptions are supported
+                    try:
+                        subscriptions = logged.get("/redfish/v1/EventService/Subscriptions")
+                        if subscriptions.status == 200:
+                            result["subscription_supported"] = True
+                    except Exception:
+                        _LOGGER.debug("EventService subscriptions endpoint not supported")
+            except Exception:
+                _LOGGER.debug("EventService endpoint not supported")
+
+            # Set appropriate message
+            if result["supports_sse"]:
+                result["message"] = "SSE is supported"
+            elif result["event_service_supported"]:
+                result["message"] = "EventService is supported, but SSE delivery may not be available"
+            else:
+                result["message"] = "EventService is not supported, SSE not available"
+
+        except Exception as err:
+            _LOGGER.error("Error checking SSE support: %s", err)
+            result["message"] = f"Error checking SSE support: {str(err)}"
+
+        return result
+
+    def test_eventservice_capabilities(self) -> dict:
+        """Test and return all EventService capabilities.
+
+        Returns:
+            dict: Raw EventService data if available, or error information
+        """
+        try:
+            logged = self.singleton_login()
+            event_service = logged.get("/redfish/v1/EventService")
+
+            if event_service.status == 200:
+                return event_service.dict
+
+            return {"error": f"EventService returned status {event_service.status}"}
+        except Exception as err:
+            return {"error": f"Error accessing EventService: {str(err)}"}
 
 
     # deletion of class
-    def __del__(self):
-        if self.logget is not None:
+    def __del__(self) -> None:
+        """Clean up resources when this object is being garbage collected.
+
+        Safely logs out of the Redfish session if one exists.
+        """
+        self._safe_logout()
+
+    def _safe_logout(self) -> None:
+        """Safely log out from the Redfish session.
+
+        Handles exceptions and ensures proper cleanup.
+        """
+        if self.logget is None:
+            return
+
+        try:
+            _LOGGER.debug("Logging out of Redfish session")
             self.logget.logout()
+            _LOGGER.debug("Successfully logged out of Redfish session")
+        except Exception as err:
+            _LOGGER.debug("Error during Redfish logout: %s", str(err))
+        finally:
+            # Always clear the session reference
+            self.logget = None
