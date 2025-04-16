@@ -33,40 +33,38 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
-    """Set up button entities from a config entry."""
-    api: RedfishApihub = hass.data[DOMAIN][config_entry.entry_id]
+    """Set up entry."""
+    api : RedfishApihub = hass.data[DOMAIN][config_entry.entry_id]
+    #_LOGGER.info("config_entry: "+str(config_entry.data))
 
-    # Get embedded systems and their status from config_entry data
-    config_data = config_entry.data
-    service_tag = config_data["info"]["ServiceTag"]
-    pulling_time = config_data["authdata"][DELAY_TIME]
-    embedded_systems = config_data["info"]["Members"]
+    # topology info test connections
+    info = await hass.async_add_executor_job(api.getRedfishInfo)
 
-    _LOGGER.info("Setting up buttons for iDRAC %s", service_tag)
 
-    # Prepare base info for each system
-    info_single_system: dict = {
-        "ServiceTag": service_tag,
-        "PullingTime": pulling_time
-    }
+    infoSingleSystem : dict = {}
+    infoSingleSystem['ServiceTag'] = info['ServiceTag']
+    infoSingleSystem['PullingTime'] = config_entry.data["authdata"][DELAY_TIME]
 
-    # Set up buttons for each enabled embedded system
-    for emb_sys in embedded_systems:
-        # Skip disabled embedded systems
-        if not emb_sys.get("enable", False):
-            _LOGGER.info("Skipping disabled system: %s", emb_sys["id"])
-            continue
+    # nel for, per ogni embbeddded system get System.Embedded.info
+    # setto i sensori dell'embedded system
+    for EmbSys in info["Members"]:
+        infoSingleSystem['id'] = EmbSys['id']
 
-        # Set up buttons for this embedded system
-        info_single_system["id"] = emb_sys["id"]
-        _LOGGER.info("Setting up buttons for system: %s", emb_sys["id"])
+        if EmbSys["enable"] is False:
 
-        await setup_Embedded_System_entry(
-            hass=hass,
-            api=api,
-            async_add_entities=async_add_entities,
-            infoSingleSystem=info_single_system.copy()
-        )
+            _LOGGER.info(msg="form Server: "+info['ServiceTag']+"   setup button for: "+ EmbSys['id'])
+            status = await setup_Embedded_System_entry(hass= hass, api= api, async_add_entities= async_add_entities, infoSingleSystem= infoSingleSystem)
+
+
+
+#    for EmbMan in info["Managers"]:
+#        infoSingleSystem['id'] = EmbMan['id']
+
+#        if EmbMan["enable"] is False:
+
+#            _LOGGER.info(msg="form Server: "+info['ServiceTag']+"   setup binary_sensor for: "+ EmbMan['id'])
+#            status = await setup_iDrac_Managers_entry(hass= hass, api= api, async_add_entities= async_add_entities, infoSingleSystem= infoSingleSystem)
+
 
     return None
 
