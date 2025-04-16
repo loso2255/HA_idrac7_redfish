@@ -31,7 +31,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_HOST): str,
         vol.Required(CONF_USERNAME): str,
         vol.Required(CONF_PASSWORD): str,
-        vol.Required(DELAY_TIME): str,
+        vol.Required(DELAY_TIME, default="30"): str,
     }
 )
 
@@ -88,7 +88,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
 
             except Exception as exp:
                 _LOGGER.exception(msg="name server: [" + "" + "]" + str(exp))
-                
+
                 errors["base"] = "unknown exception"
                 return self.async_abort(reason="unknown exception check logs")
 
