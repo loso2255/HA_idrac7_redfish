@@ -38,10 +38,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
     # nel for, per ogni embbeddded system get System.Embedded.info
     # setto i sensori dell'embedded system
+    _LOGGER
     for EmbSys in info["Members"]:
         infoSingleSystem['id'] = EmbSys['id']
 
-        if EmbSys["enable"] is False:
+        _LOGGER.info(msg="setup binary_sensor for: "+ str(EmbSys["enable"])+"  "+ str(EmbSys['id']))
+        if EmbSys["enable"] is True:
 
             _LOGGER.info(msg="form Server: "+info['ServiceTag']+"   setup binary_sensor for: "+ EmbSys['id'])
             status = await setup_Embedded_System_entry(hass= hass, api= api, async_add_entities= async_add_entities, infoSingleSystem= infoSingleSystem)
