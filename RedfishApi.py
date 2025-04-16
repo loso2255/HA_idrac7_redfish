@@ -37,6 +37,7 @@ class RedfishApihub:
         #first login
         if self.logget is None:
             self.logget = redfish.redfish_client(base_url="https://" + self.ip, max_retry=1)
+                        
             #_LOGGER.info(msg="redfish client session before login: "+str(self.logget.get_session_key()))
 
             self.logget.login(username=self.user, password=self.password)
