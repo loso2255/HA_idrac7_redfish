@@ -13,10 +13,10 @@ from redfish.rest.v1 import (
 
 
 import voluptuous as vol
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME, CONF_DELAY
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 
 from .RedfishApi import RedfishApihub
 from .const import DELAY_TIME, DOMAIN
@@ -60,34 +60,29 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
 
         errors: dict[str, str] = {}
 
-        if user_input is None:
-            return self.async_show_form(
-            step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
-        )
-        else:
-
+        if user_input is not None:
             info: dict[str, Any] = {}
             try:
                 info = await validate_input(self.hass, user_input)
 
             except RetriesExhaustedError:
-                _LOGGER.exception("Name server: [%s] Retries Exhausted: maybe the server is unreachable", user_input[CONF_HOST])
+                _LOGGER.exception("name server: [%s] Retries Exhausted: maybe the server is unreachable", user_input[CONF_HOST])
                 errors["base"] = "Retries Exhausted: maybe the server is unreachable"
 
             except ServerDownOrUnreachableError:
-                _LOGGER.exception("Name server: [%s] server unreachable", user_input[CONF_HOST])
+                _LOGGER.exception("name server: [%s] server unreachable", user_input[CONF_HOST])
                 errors["base"] = "server unreachable"
 
             except SessionCreationError:
-                _LOGGER.exception("Name server: [%s] can't connect to server", user_input[CONF_HOST])
+                _LOGGER.exception("name server: [%s] can't connect to server", user_input[CONF_HOST])
                 errors["base"] = "cannot_connect"
 
             except InvalidCredentialsError:
-                _LOGGER.exception("Name server: [%s] invalid_auth", user_input[CONF_HOST])
+                _LOGGER.exception("name server: [%s] invalid_auth", user_input[CONF_HOST])
                 errors["base"] = "invalid_auth"
 
             except Exception as exp:
-                _LOGGER.exception("Name server: [] %s", str(exp))
+                _LOGGER.exception("name server: [] %s", str(exp))
                 errors["base"] = "unknown exception"
                 return self.async_abort(reason="unknown exception check logs")
 
@@ -107,6 +102,9 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
                 # Proceed to embedded systems configuration
                 return await self.async_step_embsys()
 
+        return self.async_show_form(
+            step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
+        )
 
     async def async_step_embsys(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle the embedded systems selection step."""
@@ -131,11 +129,8 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
                 }
             }
 
-            # Include the iDRAC host IP in the entry title
-            entry_title = f"{self.service_tag} ({self.Redfish_config[CONF_HOST]})"
-
             return self.async_create_entry(
-                title=entry_title,
+                title=self.service_tag,
                 data=config_data,
             )
 
@@ -203,6 +198,122 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
             if entry.data["info"]["ServiceTag"] == user_input["info"]["ServiceTag"]:
                 return True
         return False
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        """Get the options flow for this handler."""
+        return OptionsFlowHandler(config_entry)
+
+
+##########################
+#
+#       OptionsFlow
+#
+##########################
+class OptionsFlowHandler(OptionsFlow):
+    """Handle options flow for the HA_idrac7_redfish integration."""
+
+    def __init__(self, config_entry):
+        """Initialize options flow."""
+        self.config_entry = config_entry
+        self.options = dict(config_entry.options)
+        self.data = dict(config_entry.data)
+
+    async def async_step_init(self, user_input=None) -> FlowResult:
+        """Handle initial step."""
+        return await self.async_step_embsys()
+
+
+
+    async def async_step_embsys(self, user_input=None) -> FlowResult:
+        """Handle embedded systems configuration options."""
+        if user_input is not None:
+            # Extract delay time
+            delay_time = user_input.pop(DELAY_TIME, "30")
+
+            # Update data structure with new values
+            embedded_systems = self.data["info"]["Members"]
+
+            # Update enabled status for each system
+            for system in embedded_systems:
+                system_id = system["id"]
+                if system_id in user_input:
+                    system["enable"] = user_input[system_id]
+
+            # Update managers based on enabled systems
+            self._update_manager_status()
+
+            # Update delay time in auth data
+            self.data["authdata"][DELAY_TIME] = delay_time
+
+            # Return updated data
+            return self.async_create_entry(title="", data=self.data)
+
+        # Create schema for embedded systems selection
+        schema = {}
+
+        # Add polling interval option
+        schema[vol.Required(
+            DELAY_TIME,
+            default=self.data["authdata"].get(DELAY_TIME, "30")
+        )] = str
+
+        # Add embedded systems options
+        for system in self.data["info"].get("Members", []):
+            schema[vol.Required(
+                system["id"],
+                default=system.get("enable", True)
+            )] = bool
+
+        return self.async_show_form(
+            step_id="embsys",
+            data_schema=vol.Schema(schema),
+        )
+
+    def _update_manager_status(self) -> None:
+        """Update manager status based on enabled embedded systems."""
+        embedded_systems = self.data["info"]["Members"]
+        managers = self.data["info"]["Managers"]
+
+        # Create a mapping from system to manager ID
+        system_manager_map = {}
+
+        # For each embedded system, determine its manager
+        for system in embedded_systems:
+            system_id = system["id"]
+
+            # Extract manager ID based on naming convention
+            manager_id = None
+
+            if "." in system_id:
+                parts = system_id.split(".")
+                if len(parts) >= 3:
+                    manager_id = f"iDRAC.{parts[1]}.{parts[2]}"
+
+            # Fallback: try to find a manager with a similar ID pattern
+            if not manager_id:
+                for manager in managers:
+                    if system_id.replace("System", "iDRAC") == manager["id"]:
+                        manager_id = manager["id"]
+                        break
+
+            if manager_id:
+                system_manager_map[system_id] = manager_id
+
+        # First, disable all managers
+        for manager in managers:
+            manager["enable"] = False
+
+        # Then enable managers that have at least one enabled system
+        for system in embedded_systems:
+            if system.get("enable", False):
+                manager_id = system_manager_map.get(system["id"])
+                if manager_id:
+                    for manager in managers:
+                        if manager["id"] == manager_id:
+                            manager["enable"] = True
+                            break
 
 
 ##########################
