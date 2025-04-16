@@ -1,114 +1,69 @@
-"""The HA_iidrac7_redfish integration."""
+"""Integration for Dell iDRAC Redfish interface."""
 from __future__ import annotations
+
 import logging
 
-from redfish.rest.v1 import (
-    InvalidCredentialsError,
-    RetriesExhaustedError,
-    ServerDownOrUnreachableError,
-    SessionCreationError,
-)
-
+#homeassistant import
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME, Platform
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.const import CONF_HOST, CONF_USERNAME, CONF_PASSWORD
 
+#local import
+from .const import DOMAIN, DELAY_TIME
 from .RedfishApi import RedfishApihub
-from .const import DOMAIN
 
-# TODO List the platforms that you want to support.
-# For your initial PR, limit it to 1 platform.
 
 _LOGGER = logging.getLogger(__name__)
+PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.SENSOR, Platform.BUTTON]
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up HA_idrac7_redfish from a config entry."""
-    _LOGGER.info(msg="#################ATTENZIONE ENTRATA INIT SECTIONS############################")
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+    """Set up Dell iDRAC Redfish from a config entry."""
+    api_data = {}
+    api_data = config_entry.data["authdata"]
+    host = api_data.get(CONF_HOST, "")
+    username = api_data.get(CONF_USERNAME, "")
+    password = api_data.get(CONF_PASSWORD, "")
 
-
-    hass.data.setdefault(DOMAIN, {})
-    #1. Create API instance
-    #_LOGGER.info(msg="qualche info in piu entry config:"+str(entry))
-    #_LOGGER.info(msg="qualche info in piu entry config:"+str(entry.data))
-
-    api = RedfishApihub(ip=entry.data["authdata"][CONF_HOST],user=entry.data["authdata"][CONF_USERNAME],password=entry.data["authdata"][CONF_PASSWORD])
-
-    #2. Validate the API connection
     try:
-        ActualServiceTag  = await hass.async_add_executor_job(api.getServiceTag)
+        api = RedfishApihub(host, username, password)
 
-    except RetriesExhaustedError:
-        _LOGGER.error(msg="name server: ["+ entry.data["info"]["ServiceTag"]+ "] Retries Exhausted: maybe the server is unreachable")
-        raise ConfigEntryNotReady("Connection error while connecting to: "+entry.data["info"]["ServiceTag"])
+        # Validate connection
+        await hass.async_add_executor_job(api.getRedfishInfo)
+    except Exception as e:
+        _LOGGER.error("Failed to connect to iDRAC host %s: %s", host, e)
+        raise ConfigEntryNotReady(f"Failed to connect to iDRAC: {e}") from e
 
-    except Exception as exp:
-        _LOGGER.exception(msg="name server: [" + entry.data["info"]["ServiceTag"] + "]" + str(exp))
-        raise ConfigEntryNotReady("name server: [" + entry.data["info"]["ServiceTag"] + "] not knowing error")
+    # Store API instance for platforms to access
+    hass.data.setdefault(DOMAIN, {})[config_entry.entry_id] = api
 
+    # Forward setup to platforms
+    await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
 
-    else:
-        #connection valid check service tag
-        if ActualServiceTag != entry.data["info"]["ServiceTag"]:
-            _LOGGER.error(msg="error not excepted service tag")
-
-            await hass.async_add_executor_job(api.__del__)
-            raise ConfigEntryNotReady("error not excepted service tag")
-
-        else:
-            #check credentials and session creation
-            try:
-                await hass.async_add_executor_job(api.singleton_login)
-
-                #3. Store an API object for your platforms to access
-                # hass.data[DOMAIN][entry.entry_id] = MyApi(...)
-
-                _LOGGER.info(msg="#### controllo singleton login successo ######")
-                #Store an API object
-                hass.data[DOMAIN][entry.entry_id] = api
-
-                await hass.async_create_task(
-                    hass.config_entries.async_forward_entry_setups(entry, [Platform.BINARY_SENSOR, Platform.BUTTON, Platform.SENSOR])
-                )
-
-
-
-            except SessionCreationError:
-                _LOGGER.exception( msg="name server: [" + entry.data["info"]["ServiceTag"] + "] Session Creation Error")
-                raise ConfigEntryNotReady("name server: [" + entry.data["info"]["ServiceTag"] + "] Session Creation Error")
-
-            except InvalidCredentialsError:
-                _LOGGER.exception( msg="name server: [" + entry.data["info"]["ServiceTag"] + "] invalid_auth")
-                raise ConfigEntryNotReady("name server: [" + entry.data["info"]["ServiceTag"] + "] invalid_auth")
-
-            except RetriesExhaustedError:
-                _LOGGER.error(msg="name server: ["+ entry.data["info"]["ServiceTag"]+ "] Retries Exhausted: maybe the server is unreachable")
-                raise ConfigEntryNotReady("Connection error while connecting to: "+entry.data["info"]["ServiceTag"])
-
-            except Exception as exp:
-                _LOGGER.exception(msg="name server: [" + entry.data["info"]["ServiceTag"] + "]" + str(exp))
-                raise ConfigEntryNotReady("name server: [" + entry.data["info"]["ServiceTag"] + "] Generic Exception")
-
-
+    # Register update listener for config entry changes
+    config_entry.async_on_unload(config_entry.add_update_listener(async_reload_entry))
 
     return True
 
 
-
-
-
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Unload a config entry."""
+    # Unload platforms
+    unload_ok = await hass.config_entries.async_unload_platforms(
+        config_entry, PLATFORMS
+    )
+    if unload_ok:
+        # Clean up iDRAC connection
+        api = hass.data[DOMAIN].pop(config_entry.entry_id)
+        await hass.async_add_executor_job(api.__del__)
 
-    unload_ok_BinarySensor = await hass.config_entries.async_unload_platforms(entry, [ Platform.BINARY_SENSOR, Platform.SENSOR, Platform.BUTTON  ])
+    return unload_ok
 
-    if unload_ok_BinarySensor:
-        api : RedfishApi = hass.data[DOMAIN].pop(entry.entry_id)
-        try:
-            await hass.async_add_executor_job(api.__del__)
 
-        except Exception as err:
-            _LOGGER.error(msg="can't contact the server on unload entry "+ err)
-
-    return unload_ok_BinarySensor
+async def async_reload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
+    """Reload a config entry when its data changes."""
+    _LOGGER.debug("Reloading iDRAC %s due to config changes", config_entry.data["info"]["ServiceTag"])
+    await async_unload_entry(hass, config_entry)
+    await async_setup_entry(hass, config_entry)
