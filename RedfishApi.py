@@ -308,45 +308,26 @@ class RedfishApihub:
         return respDict
     # }
 
-    def getTemperatureSensor(self, idDevice : str) -> list:
-        """Get temperature sensor readings for a device.
+    def getTemperatureSensor(self, idEmbSys):
+    # {
+        logged = self.singleton_login()
 
-        Returns a list of temperature sensor data.
-        """
+        resp = logged.get( path = ChassisGenThermal.substitute( {'EmbeddedSystemID' : str(idEmbSys) } ) )
+
+        #_LOGGER.info("response temp sensor: ", str(resp))
+        vectorTemp = resp.dict.get("Temperatures", [])
+
+
         listTemperatureSensorReading = []
+        for elm in vectorTemp:
 
-        try:
-            logged = self.connectRedfish()
+            tmp = elm.get("@odata.id")
+            listTemperatureSensorReading.append( logged.get( path = tmp ).dict )
 
-            # Get temperature sensors collection
-            embSystem = logged.get("/redfish/v1/Systems/"+idDevice+"/Thermal")
-
-            # Process each temperature sensor
-            for sensor in embSystem.dict.get('Temperatures', []):
-                # Get the individual sensor URI
-                sensor_uri = sensor.get('@odata.id')
-
-                # Skip if sensor URI is None or invalid
-                if not sensor_uri:
-                    continue
-
-                # Get detailed sensor data
-                try:
-                    sensor_data = logged.get(path=sensor_uri).dict
-                    if sensor_data:
-                        listTemperatureSensorReading.append(sensor_data)
-                except Exception:
-                    # If we can't get detailed data, use the summary data
-                    listTemperatureSensorReading.append(sensor)
-
-            # If no individual sensors were found, use the summary data
-            if not listTemperatureSensorReading and 'Temperatures' in embSystem.dict:
-                listTemperatureSensorReading = embSystem.dict['Temperatures']
-
-        except Exception as e:
-            logging.error("Error getting temperature sensors: %s", e)
-
+        #_LOGGER.info("temp apir response: "+str(listTemperatureSensorReading))
         return listTemperatureSensorReading
+
+    # }
 
     ## azioni
 
