@@ -60,7 +60,12 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
 
         errors: dict[str, str] = {}
 
-        if user_input is not None:
+        if user_input is None:
+            return self.async_show_form(
+            step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
+        )
+        else:
+
             info: dict[str, Any] = {}
             try:
                 info = await validate_input(self.hass, user_input)
@@ -102,9 +107,6 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
                 # Proceed to embedded systems configuration
                 return await self.async_step_embsys()
 
-        return self.async_show_form(
-            step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
-        )
 
     async def async_step_embsys(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle the embedded systems selection step."""

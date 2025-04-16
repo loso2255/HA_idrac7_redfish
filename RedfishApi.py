@@ -9,7 +9,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class RedfishApihub:
-    def __init__(self, ip: str, user: str, password: str):
+    def __init__(self, ip: str, user: str, password: str) -> None:
         self.ip : str = ip
         self.user : str = user
         self.password : str = password
@@ -37,7 +37,7 @@ class RedfishApihub:
         #first login
         if self.logget is None:
             self.logget = redfish.redfish_client(base_url="https://" + self.ip, max_retry=1)
-                        
+
             #_LOGGER.info(msg="redfish client session before login: "+str(self.logget.get_session_key()))
 
             self.logget.login(username=self.user, password=self.password)
