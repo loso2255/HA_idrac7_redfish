@@ -28,74 +28,65 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
-    """Set up sensors from a config entry."""
-    api: RedfishApihub = hass.data[DOMAIN][config_entry.entry_id]
+    """Set up entry."""
+    api : RedfishApihub = hass.data[DOMAIN][config_entry.entry_id]
+    #_LOGGER.info("config_entry: "+str(config_entry.data))
+    _LOGGER.info("########### ingresso fan config ############## ")
 
-    # Get embedded systems and their status from config_entry data
-    config_data = config_entry.data
-    service_tag = config_data["info"]["ServiceTag"]
-    pulling_time = config_data["authdata"][DELAY_TIME]
-    embedded_systems = config_data["info"]["Members"]
+    # topology info test connections
+    info = await hass.async_add_executor_job(api.getRedfishInfo)
 
-    _LOGGER.debug("Setting up sensors for iDRAC %s", service_tag)
 
-    # Prepare base info for each system
-    info_single_system: dict = {
-        "ServiceTag": service_tag,
-        "PullingTime": pulling_time
-    }
+    infoSingleSystem : dict = {}
+    infoSingleSystem['ServiceTag'] = info['ServiceTag']
+    infoSingleSystem['PullingTime'] = config_entry.data["authdata"][DELAY_TIME]
 
-    # Set up sensors for each enabled embedded system
-    for emb_sys in embedded_systems:
-        # Skip disabled embedded systems
-        if not emb_sys.get("enable", False):
-            _LOGGER.debug("Skipping disabled system: %s", emb_sys["id"])
-            continue
+    # nel for, per ogni embbeddded system get System.Embedded.info
+    # setto i sensori dell'embedded system
+    for EmbSys in info["Members"]:
+        infoSingleSystem['id'] = EmbSys['id']
 
-        # Set up sensors for this embedded system
-        info_single_system["id"] = emb_sys["id"]
-        _LOGGER.debug("Setting up sensors for system: %s", emb_sys["id"])
+        if EmbSys["enable"] is True:
 
-        await setup_Embedded_System_entry(
-            hass=hass,
-            api=api,
-            async_add_entities=async_add_entities,
-            infoSingleSystem=info_single_system.copy()
-        )
+            _LOGGER.info(msg="form Server: "+info['ServiceTag']+"   setup sensor for: "+ EmbSys['id'])
+            status = await setup_Embedded_System_Sensor(hass= hass, api= api, async_add_entities= async_add_entities, infoSingleSystem= infoSingleSystem)
 
-    # For future implementation: Manager sensors
-    # managers = config_data["info"]["Managers"]
-    # for manager in managers:
-    #     if manager.get("enable", False):
-    #         info_single_system["id"] = manager["id"]
-    #         await setup_iDrac_Managers_entry(
-    #             hass=hass,
-    #             api=api,
-    #             async_add_entities=async_add_entities,
-    #             infoSingleSystem=info_single_system.copy()
-    #         )
+
+
+#    for EmbMan in info["Managers"]:
+#        infoSingleSystem['id'] = EmbMan['id']
+
+#        if EmbMan["enable"] is False:
+
+#            _LOGGER.info(msg="form Server: "+info['ServiceTag']+"   setup binary_sensor for: "+ EmbMan['id'])
+#            status = await setup_iDrac_Managers_entry(hass= hass, api= api, async_add_entities= async_add_entities, infoSingleSystem= infoSingleSystem)
+
 
     return None
 
 
-async def setup_Embedded_System_entry(hass: HomeAssistant, api : RedfishApihub, async_add_entities: AddEntitiesCallback, infoSingleSystem : dict):
-    """Set up sensors for an embedded system."""
+async def setup_Embedded_System_Sensor(hass: HomeAssistant, api : RedfishApihub, async_add_entities: AddEntitiesCallback, infoSingleSystem : dict):
+
     EmbSysInfo = await hass.async_add_executor_job(api.getEmbSysInfo, infoSingleSystem['id'])
-    _LOGGER.debug("Setting up device: %s_%s", infoSingleSystem['ServiceTag'], infoSingleSystem['id'])
+    _LOGGER.info(msg="identificativo device: " + str(infoSingleSystem['ServiceTag']+"_"+infoSingleSystem['id']) )
 
     device_info = DeviceInfo(
-        identifiers={(DOMAIN, f"{infoSingleSystem['ServiceTag']}_{infoSingleSystem['id']}")},
+                #  esempio {('domain', DOMAIN), ('serial', "ServiceTag_Embedded.System.1")}
+        identifiers={ (DOMAIN, str(infoSingleSystem['ServiceTag']+"_"+infoSingleSystem['id']))  },
         name=EmbSysInfo["name"],
         manufacturer=EmbSysInfo['manufacturer'],
         model=EmbSysInfo['model'],
         sw_version=EmbSysInfo['sw_version'],
-        serial_number=infoSingleSystem['ServiceTag']
+        serial_number=str(infoSingleSystem['ServiceTag'])
     )
 
-    coordinator = SensorCoordinator(hass, api, infoSingleSystem['id'], infoSingleSystem['PullingTime'])
 
     EmbSysCooledBy = await hass.async_add_executor_job(api.getEmbeddedSystemCooledBy, infoSingleSystem['id'])
     _LOGGER.info("Cooling components: "+ str(EmbSysCooledBy))
+
+    coordinator = SensorCoordinator(hass, api, infoSingleSystem['id'], infoSingleSystem['PullingTime'])
+    #await coordinator.async_config_entry_first_refresh()
+
 
     toAddSensor = []
 
@@ -118,15 +109,14 @@ async def setup_Embedded_System_entry(hass: HomeAssistant, api : RedfishApihub, 
 
     #TODO add PSU sensor
 
+
+
     #add sensor
     async_add_entities(toAddSensor,True)
     #schedule first update
     await coordinator.async_config_entry_first_refresh()
+    #coordinator.async_update_listeners()
 
-    return True
 
 
-#setup entry for iDrac Managers
-async def setup_iDrac_Managers_entry(hass: HomeAssistant, api : RedfishApihub, async_add_entities: AddEntitiesCallback, infoSingleSystem : dict):
-    """Set up sensors for an iDRAC manager."""
     return True

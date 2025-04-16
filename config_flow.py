@@ -13,10 +13,10 @@ from redfish.rest.v1 import (
 
 
 import voluptuous as vol
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFlow, OptionsFlowWithConfigEntry
+from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME, CONF_DELAY
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 
 from .RedfishApi import RedfishApihub
 from .const import DELAY_TIME, DOMAIN
@@ -60,29 +60,34 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
 
         errors: dict[str, str] = {}
 
-        if user_input is not None:
+        if user_input is None:
+            return self.async_show_form(
+            step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
+        )
+        else:
+
             info: dict[str, Any] = {}
             try:
                 info = await validate_input(self.hass, user_input)
 
             except RetriesExhaustedError:
-                _LOGGER.exception("name server: [%s] Retries Exhausted: maybe the server is unreachable", user_input[CONF_HOST])
+                _LOGGER.exception("Name server: [%s] Retries Exhausted: maybe the server is unreachable", user_input[CONF_HOST])
                 errors["base"] = "Retries Exhausted: maybe the server is unreachable"
 
             except ServerDownOrUnreachableError:
-                _LOGGER.exception("name server: [%s] server unreachable", user_input[CONF_HOST])
+                _LOGGER.exception("Name server: [%s] server unreachable", user_input[CONF_HOST])
                 errors["base"] = "server unreachable"
 
             except SessionCreationError:
-                _LOGGER.exception("name server: [%s] can't connect to server", user_input[CONF_HOST])
+                _LOGGER.exception("Name server: [%s] can't connect to server", user_input[CONF_HOST])
                 errors["base"] = "cannot_connect"
 
             except InvalidCredentialsError:
-                _LOGGER.exception("name server: [%s] invalid_auth", user_input[CONF_HOST])
+                _LOGGER.exception("Name server: [%s] invalid_auth", user_input[CONF_HOST])
                 errors["base"] = "invalid_auth"
 
             except Exception as exp:
-                _LOGGER.exception("name server: [] %s", str(exp))
+                _LOGGER.exception("Name server: [] %s", str(exp))
                 errors["base"] = "unknown exception"
                 return self.async_abort(reason="unknown exception check logs")
 
@@ -102,9 +107,6 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
                 # Proceed to embedded systems configuration
                 return await self.async_step_embsys()
 
-        return self.async_show_form(
-            step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
-        )
 
     async def async_step_embsys(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle the embedded systems selection step."""
@@ -201,143 +203,6 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
             if entry.data["info"]["ServiceTag"] == user_input["info"]["ServiceTag"]:
                 return True
         return False
-
-    @staticmethod
-    @callback
-    def async_get_options_flow(config_entry):
-        """Get the options flow for this handler."""
-        return OptionsFlowHandler(config_entry)
-
-
-###############################
-#
-#       OptionsFlowHandler
-#
-###############################
-class OptionsFlowHandler(OptionsFlowWithConfigEntry):
-    """Handle options flow for iDRAC Redfish integration."""
-
-    def __init__(self, config_entry) -> None:
-        """Initialize options flow."""
-        super().__init__(config_entry)
-        self.embedded_systems = config_entry.data["info"]["Members"]
-        self.config_data = dict(config_entry.data)
-        self.auth_data = dict(config_entry.data["authdata"])
-
-    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        """Handle options flow."""
-        if user_input is not None:
-            # Update polling time if provided
-            if DELAY_TIME in user_input:
-                self.auth_data[DELAY_TIME] = user_input[DELAY_TIME]
-
-            # Update enabled status for each embedded system
-            updated_systems = []
-            for system in self.embedded_systems:
-                system_id = system["id"]
-                updated_system = dict(system)
-                if system_id in user_input:
-                    updated_system["enable"] = user_input[system_id]
-                updated_systems.append(updated_system)
-
-            # Create updated data structure
-            updated_data = dict(self.config_data)
-            updated_data["authdata"] = self.auth_data
-            updated_data["info"] = dict(self.config_data["info"])
-            updated_data["info"]["Members"] = updated_systems
-
-            # Update managers status
-            updated_managers = self._update_manager_status(
-                updated_systems,
-                self.config_data["info"]["Managers"]
-            )
-            updated_data["info"]["Managers"] = updated_managers
-
-            # Update config entry
-            self.hass.config_entries.async_update_entry(
-                self.config_entry,
-                data=updated_data,
-            )
-
-            # Trigger entity reload to apply changes
-            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
-
-            return self.async_create_entry(title="", data={})
-
-        # Create schema for options flow
-        options_schema = {
-            vol.Required(
-                DELAY_TIME,
-                default=self.auth_data.get(DELAY_TIME, "30")
-            ): vol.All(str, vol.Coerce(str))
-        }
-
-        # Add embedded system selection options
-        for system in self.embedded_systems:
-            system_id = system["id"]
-            system_name = system.get("name", system_id)
-            options_schema[vol.Required(
-                system_id,
-                default=system.get("enable", True)
-            )] = bool
-
-        return self.async_show_form(
-            step_id="init",
-            data_schema=vol.Schema(options_schema),
-            description_placeholders={
-                "service_tag": self.config_data["info"]["ServiceTag"],
-                "host": self.config_data["authdata"][CONF_HOST],
-            }
-        )
-
-    def _update_manager_status(
-        self, embedded_systems: list[dict[str, Any]], managers: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
-        """Update manager status based on enabled embedded systems."""
-        # Create a copy of managers to update
-        updated_managers = [dict(manager) for manager in managers]
-
-        # Create a mapping from system to manager ID
-        system_manager_map = {}
-
-        # For each embedded system, determine its manager
-        for system in embedded_systems:
-            system_id = system["id"]
-
-            # Extract manager ID based on naming convention
-            manager_id = None
-
-            # From system ID like "System.Embedded.1" to manager ID "iDRAC.Embedded.1"
-            if "." in system_id:
-                parts = system_id.split(".")
-                if len(parts) >= 3:
-                    manager_id = f"iDRAC.{parts[1]}.{parts[2]}"
-
-            # Fallback to name-based correlation
-            if not manager_id:
-                for manager in updated_managers:
-                    if system_id.replace("System", "iDRAC") == manager["id"]:
-                        manager_id = manager["id"]
-                        break
-
-            if manager_id:
-                system_manager_map[system_id] = manager_id
-
-        # First, disable all managers
-        for manager in updated_managers:
-            manager["enable"] = False
-
-        # Enable managers that have at least one enabled system
-        for system in embedded_systems:
-            if system.get("enable", False):
-                manager_id = system_manager_map.get(system["id"])
-                if manager_id:
-                    for manager in updated_managers:
-                        if manager["id"] == manager_id:
-                            manager["enable"] = True
-                            break
-
-        return updated_managers
 
 
 ##########################
