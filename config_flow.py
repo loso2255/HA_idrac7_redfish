@@ -13,11 +13,10 @@ from redfish.rest.v1 import (
 
 
 import voluptuous as vol
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFlow, OptionsFlowWithConfigEntry
+from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME, CONF_DELAY
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.selector import BooleanSelector
+from homeassistant.core import HomeAssistant
 
 from .RedfishApi import RedfishApihub
 from .const import DELAY_TIME, DOMAIN
@@ -61,7 +60,12 @@ class RedfishIdracConfigFlow(ConfigFlow, domain=DOMAIN):
 
         errors: dict[str, str] = {}
 
-        if user_input is not None:
+        if user_input is None:
+            return self.async_show_form(
+            step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
+        )
+        else:
+
             info: dict[str, Any] = {}
             try:
                 info = await validate_input(self.hass, user_input)
@@ -103,9 +107,6 @@ class RedfishIdracConfigFlow(ConfigFlow, domain=DOMAIN):
                 # Proceed to embedded systems configuration
                 return await self.async_step_embsys()
 
-        return self.async_show_form(
-            step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
-        )
 
     async def async_step_embsys(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle the embedded systems selection step."""
@@ -202,151 +203,6 @@ class RedfishIdracConfigFlow(ConfigFlow, domain=DOMAIN):
             if entry.data["info"]["ServiceTag"] == user_input["info"]["ServiceTag"]:
                 return True
         return False
-
-    @staticmethod
-    @callback
-    def async_get_options_flow(config_entry):
-        """Get the options flow for this handler."""
-        return OptionsFlowHandler(config_entry)
-
-
-###############################
-#
-#       OptionsFlowHandler
-#
-###############################
-class OptionsFlowHandler(OptionsFlowWithConfigEntry):
-    """Handle options flow for iDRAC Redfish integration."""
-
-    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """Handle initial options selection."""
-
-        return self.async_show_menu(step_id="init", menu_options=["credentials", "systems"], )
-
-    async def async_step_credentials(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """Handle credentials update."""
-
-        errors: dict[str, str] = {}
-
-        if user_input is not None:
-            # Test new credentials
-            try:
-                await validate_input(self.hass, user_input)
-            except RetriesExhaustedError:
-                errors["base"] = "retries_exhausted"
-            except ServerDownOrUnreachableError:
-                errors["base"] = "cannot_connect"
-            except SessionCreationError:
-                errors["base"] = "cannot_connect"
-            except InvalidCredentialsError:
-                errors["base"] = "invalid_auth"
-            except Exception:
-                _LOGGER.exception("Unexpected exception")
-                errors["base"] = "unknown"
-            else:
-                # Update config entry with new credentials
-                new_data = {**self.config_entry.data}
-
-                # Update auth data in the nested structure
-                if "authdata" in new_data:
-                    new_data["authdata"].update(user_input)
-                else:
-                    # Flat structure - update directly
-                    new_data.update(user_input)
-
-                self.hass.config_entries.async_update_entry(
-                    self.config_entry, data=new_data
-                )
-
-                # Trigger reload of the integration
-                await self.hass.config_entries.async_reload(self.config_entry.entry_id)
-
-                return self.async_create_entry(title="", data={})
-
-        # Get current credentials
-        auth_data = self.config_entry.data.get("authdata", self.config_entry.data)
-
-        credentials_schema = vol.Schema({
-            vol.Required(
-                CONF_HOST,
-                default=auth_data.get(CONF_HOST)
-            ): str,
-            vol.Required(
-                CONF_USERNAME,
-                default=auth_data.get(CONF_USERNAME)
-            ): str,
-            vol.Required(CONF_PASSWORD): str,
-            vol.Required(
-                DELAY_TIME,
-                default=auth_data.get(DELAY_TIME, "30")
-            ): str,
-        })
-
-        return self.async_show_form(
-            step_id="credentials",
-            data_schema=credentials_schema,
-            errors=errors,
-            description_placeholders={
-                "service_tag": self.config_entry.data.get("info", {}).get("ServiceTag", "Unknown"),
-                "host": auth_data.get(CONF_HOST),
-            },
-        )
-
-    async def async_step_systems(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Handle systems and managers configuration."""
-        if user_input is not None:
-            # Get current data structure
-            new_data = dict(self.config_entry.data)
-
-            # Update embedded systems configuration
-            if "info" in new_data and "Members" in new_data["info"]:
-                updated_systems = []
-                for system in new_data["info"]["Members"]:
-                    updated_system = dict(system)
-                    if system_id := updated_system.get("id"):
-                        if system_id in user_input:
-                            updated_system["enable"] = user_input[system_id]
-                    updated_systems.append(updated_system)
-
-                # Update managers status based on new system configuration
-                updated_managers = update_manager_status(updated_systems, new_data["info"].get("Managers", []) )
-
-                # Update the data structure
-                new_data["info"]["Members"] = updated_systems
-                new_data["info"]["Managers"] = updated_managers
-
-            self.hass.config_entries.async_update_entry(
-                self.config_entry, data=new_data
-            )
-
-            # Trigger reload of the integration
-            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
-
-            return self.async_create_entry(title="", data={})
-
-        # Create systems selection schema with better labels
-        options_schema = {}
-        embedded_systems = self.config_entry.data.get("info", {}).get("Members", [])
-
-        for system in embedded_systems:
-            system_id = system["id"]
-            # Get current enable status - default to True if not specified
-            current_status = system.get("enable", True)
-
-            options_schema[
-                vol.Required(system_id, default=current_status, description={"suggested_value": current_status})
-            ] = bool
-
-        return self.async_show_form(
-            step_id="systems",
-            data_schema=vol.Schema(options_schema),
-            description_placeholders={
-                "service_tag": self.config_entry.data.get("info", {}).get("ServiceTag", "Unknown"),
-                "host": self.config_entry.data.get("authdata", {}).get(CONF_HOST, "Unknown"),
-            },
-        )
 
 
 ##########################

@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 #home assistant import
+
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 
@@ -16,6 +17,10 @@ from .RedfishApi import RedfishApihub
 from .type_sensor.button.Server_power_button import ServerPowerButton
 
 _LOGGER = logging.getLogger(__name__)
+
+from datetime import timedelta
+
+
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
@@ -38,11 +43,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
     # nel for, per ogni embbeddded system get System.Embedded.info
     # setto i sensori dell'embedded system
-    for EmbSys in embedded_systems:
-        # Skip disabled embedded systems
-        if not EmbSys.get("enable", True):
-            _LOGGER.debug("Skipping disabled system: %s", EmbSys['id'])
-            continue
+    for EmbSys in info["Members"]:
+        infoSingleSystem['id'] = EmbSys['id']
+
+        if EmbSys["enable"] is True:
 
         infoSingleSystem['id'] = EmbSys['id']
         _LOGGER.info("form Server: %s   setup button for: %s", service_tag, EmbSys['id'])
@@ -62,36 +66,35 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     return None
 
 
-async def setup_Embedded_System_entry(hass: HomeAssistant, api: RedfishApihub, async_add_entities: AddEntitiesCallback, infoSingleSystem: dict):
-    """Set up button entities for an embedded system."""
-    EmbSysInfo = await hass.async_add_executor_job(api.getEmbSysInfo, infoSingleSystem['id'])
-    _LOGGER.info("Setting up buttons for device: %s_%s", infoSingleSystem['ServiceTag'], infoSingleSystem['id'])
+async def setup_Embedded_System_entry(hass: HomeAssistant, api : RedfishApihub, async_add_entities: AddEntitiesCallback, infoSingleSystem : dict):
 
+    EmbSysInfo = await hass.async_add_executor_job(api.getEmbSysInfo, infoSingleSystem['id'])
     device_info = DeviceInfo(
-        identifiers={(DOMAIN, f"{infoSingleSystem['ServiceTag']}_{infoSingleSystem['id']}")},
+                #  esempio {('domain', DOMAIN), ('serial', "ServiceTag_Embedded.System.1")}
+        identifiers={ (DOMAIN, str(infoSingleSystem['ServiceTag']+"_"+infoSingleSystem['id'])) },
         name=EmbSysInfo["name"],
         manufacturer=EmbSysInfo['manufacturer'],
         model=EmbSysInfo['model'],
         sw_version=EmbSysInfo['sw_version'],
-        serial_number=infoSingleSystem['ServiceTag']
+        serial_number=str(infoSingleSystem['ServiceTag'])
     )
 
+
     EmbSysPowerActions = await hass.async_add_executor_job(api.getEmbSysPowerActions, infoSingleSystem['id'])
-    _LOGGER.info("Supported power functions: %s", EmbSysPowerActions)
+    _LOGGER.info("supported power functions:" + str(EmbSysPowerActions))
 
-    power_button_list = []
+
+    powerButtonList = []
     for elm in EmbSysPowerActions:
-        if elm != "Nmi":  # Skip Non-Maskable Interrupt
-            _LOGGER.info("Adding power button for action: %s", elm)
-            info = dict(infoSingleSystem)
-            info['powerActions'] = elm
-            power_button_list.append(ServerPowerButton(
-                hass=hass,
-                api=api,
-                device_info=device_info,
-                infoSingleSystem=info
-            ))
+        _LOGGER.info("add power button for status: "+elm)
 
-    async_add_entities(power_button_list, True)
+        if elm != "Nmi":
+            infoSingleSystem['powerActions'] = elm
+            powerButtonList.append( ServerPowerButton(hass=hass, api = api, device_info= device_info, infoSingleSystem= infoSingleSystem) )
+
+
+    async_add_entities(powerButtonList,True)
+
+
     return True
 
