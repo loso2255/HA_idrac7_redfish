@@ -34,10 +34,11 @@ git clone https://github.com/loso2255/HA_idrac7_redfish.git
     -  general Health Status [OK]
     -  Fan RPM speed [OK]
     -  Power Usage [OK]
-    -  PSU input voltage [future]
+    -  PSU input voltage [OK]
     -  Temperature from idrac [OK]
 
 -  add button:
     -  button for change power status of the server [OK]
-  
-- each sub_device can be registered or not in the config_flow (and later added or removed)  [future]
+
+- each sub_device can be registered or not in the config_flow (and later added or removed)  [OK]
+- add the possibility to modify cretential, and enable or disable system [OK]

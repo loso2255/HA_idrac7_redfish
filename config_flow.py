@@ -17,6 +17,7 @@ from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFl
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME, CONF_DELAY
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.selector import BooleanSelector
 
 from .RedfishApi import RedfishApihub
 from .const import DELAY_TIME, DOMAIN
@@ -41,7 +42,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
 #       ConfigFlow
 #
 ###############################
-class ConfigFlow(ConfigFlow, domain=DOMAIN):
+class RedfishIdracConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for HA_idrac7_redfish."""
 
     VERSION = 1
@@ -117,7 +118,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
                     system["enable"] = user_input[system_id]
 
             # Update manager status based on enabled systems
-            self._update_manager_status()
+            self.update_manager_status()
 
             # Create config entry with complete data
             config_data = {
@@ -217,125 +218,135 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
 class OptionsFlowHandler(OptionsFlowWithConfigEntry):
     """Handle options flow for iDRAC Redfish integration."""
 
-    def __init__(self, config_entry) -> None:
-        """Initialize options flow."""
-        super().__init__(config_entry)
-        self.embedded_systems = config_entry.data["info"]["Members"]
-        self.config_data = dict(config_entry.data)
-        self.auth_data = dict(config_entry.data["authdata"])
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Handle initial options selection."""
 
-    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        """Handle options flow."""
+        return self.async_show_menu(step_id="init", menu_options=["credentials", "systems"], )
+
+    async def async_step_credentials(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Handle credentials update."""
+
+        errors: dict[str, str] = {}
+
         if user_input is not None:
-            # Update polling time if provided
-            if DELAY_TIME in user_input:
-                self.auth_data[DELAY_TIME] = user_input[DELAY_TIME]
+            # Test new credentials
+            try:
+                await validate_input(self.hass, user_input)
+            except RetriesExhaustedError:
+                errors["base"] = "retries_exhausted"
+            except ServerDownOrUnreachableError:
+                errors["base"] = "cannot_connect"
+            except SessionCreationError:
+                errors["base"] = "cannot_connect"
+            except InvalidCredentialsError:
+                errors["base"] = "invalid_auth"
+            except Exception:
+                _LOGGER.exception("Unexpected exception")
+                errors["base"] = "unknown"
+            else:
+                # Update config entry with new credentials
+                new_data = {**self.config_entry.data}
 
-            # Update enabled status for each embedded system
-            updated_systems = []
-            for system in self.embedded_systems:
-                system_id = system["id"]
-                updated_system = dict(system)
-                if system_id in user_input:
-                    updated_system["enable"] = user_input[system_id]
-                updated_systems.append(updated_system)
+                # Update auth data in the nested structure
+                if "authdata" in new_data:
+                    new_data["authdata"].update(user_input)
+                else:
+                    # Flat structure - update directly
+                    new_data.update(user_input)
 
-            # Create updated data structure
-            updated_data = dict(self.config_data)
-            updated_data["authdata"] = self.auth_data
-            updated_data["info"] = dict(self.config_data["info"])
-            updated_data["info"]["Members"] = updated_systems
+                self.hass.config_entries.async_update_entry(
+                    self.config_entry, data=new_data
+                )
 
-            # Update managers status
-            updated_managers = self._update_manager_status(
-                updated_systems,
-                self.config_data["info"]["Managers"]
-            )
-            updated_data["info"]["Managers"] = updated_managers
+                # Trigger reload of the integration
+                await self.hass.config_entries.async_reload(self.config_entry.entry_id)
 
-            # Update config entry data without reloading
-            self.hass.config_entries.async_update_entry(
-                self.config_entry,
-                data=updated_data,
-            )
+                return self.async_create_entry(title="", data={})
 
-            # Let Home Assistant handle the reload via update listener
-            return self.async_create_entry(title="", data={})
+        # Get current credentials
+        auth_data = self.config_entry.data.get("authdata", self.config_entry.data)
 
-        # Create schema for options flow
-        options_schema = {
+        credentials_schema = vol.Schema({
+            vol.Required(
+                CONF_HOST,
+                default=auth_data.get(CONF_HOST)
+            ): str,
+            vol.Required(
+                CONF_USERNAME,
+                default=auth_data.get(CONF_USERNAME)
+            ): str,
+            vol.Required(CONF_PASSWORD): str,
             vol.Required(
                 DELAY_TIME,
-                default=self.auth_data.get(DELAY_TIME, "30")
-            ): vol.All(str, vol.Coerce(str))
-        }
-
-        # Add embedded system selection options
-        for system in self.embedded_systems:
-            system_id = system["id"]
-            system_name = system.get("name", system_id)
-            options_schema[vol.Required(
-                system_id,
-                default=system.get("enable", True)
-            )] = bool
+                default=auth_data.get(DELAY_TIME, "30")
+            ): str,
+        })
 
         return self.async_show_form(
-            step_id="init",
-            data_schema=vol.Schema(options_schema),
+            step_id="credentials",
+            data_schema=credentials_schema,
+            errors=errors,
             description_placeholders={
-                "service_tag": self.config_data["info"]["ServiceTag"],
-                "host": self.config_data["authdata"][CONF_HOST],
-            }
+                "service_tag": self.config_entry.data.get("info", {}).get("ServiceTag", "Unknown"),
+                "host": auth_data.get(CONF_HOST),
+            },
         )
 
-    def _update_manager_status(
-        self, embedded_systems: list[dict[str, Any]], managers: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
-        """Update manager status based on enabled embedded systems."""
-        # Create a copy of managers to update
-        updated_managers = [dict(manager) for manager in managers]
+    async def async_step_systems(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Handle systems and managers configuration."""
+        if user_input is not None:
+            # Get current data structure
+            new_data = dict(self.config_entry.data)
 
-        # Create a mapping from system to manager ID
-        system_manager_map = {}
+            # Update embedded systems configuration
+            if "info" in new_data and "Members" in new_data["info"]:
+                updated_systems = []
+                for system in new_data["info"]["Members"]:
+                    updated_system = dict(system)
+                    if system_id := updated_system.get("id"):
+                        if system_id in user_input:
+                            updated_system["enable"] = user_input[system_id]
+                    updated_systems.append(updated_system)
 
-        # For each embedded system, determine its manager
+                # Update managers status based on new system configuration
+                updated_managers = update_manager_status(updated_systems, new_data["info"].get("Managers", []) )
+
+                # Update the data structure
+                new_data["info"]["Members"] = updated_systems
+                new_data["info"]["Managers"] = updated_managers
+
+            self.hass.config_entries.async_update_entry(
+                self.config_entry, data=new_data
+            )
+
+            # Trigger reload of the integration
+            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+
+            return self.async_create_entry(title="", data={})
+
+        # Create systems selection schema with better labels
+        options_schema = {}
+        embedded_systems = self.config_entry.data.get("info", {}).get("Members", [])
+
         for system in embedded_systems:
             system_id = system["id"]
+            # Get current enable status - default to True if not specified
+            current_status = system.get("enable", True)
 
-            # Extract manager ID based on naming convention
-            manager_id = None
+            options_schema[
+                vol.Required(system_id, default=current_status, description={"suggested_value": current_status})
+            ] = bool
 
-            # From system ID like "System.Embedded.1" to manager ID "iDRAC.Embedded.1"
-            if "." in system_id:
-                parts = system_id.split(".")
-                if len(parts) >= 3:
-                    manager_id = f"iDRAC.{parts[1]}.{parts[2]}"
-
-            # Fallback to name-based correlation
-            if not manager_id:
-                for manager in updated_managers:
-                    if system_id.replace("System", "iDRAC") == manager["id"]:
-                        manager_id = manager["id"]
-                        break
-
-            if manager_id:
-                system_manager_map[system_id] = manager_id
-
-        # First, disable all managers
-        for manager in updated_managers:
-            manager["enable"] = False
-
-        # Enable managers that have at least one enabled system
-        for system in embedded_systems:
-            if system.get("enable", False):
-                manager_id = system_manager_map.get(system["id"])
-                if manager_id:
-                    for manager in updated_managers:
-                        if manager["id"] == manager_id:
-                            manager["enable"] = True
-                            break
-
-        return updated_managers
+        return self.async_show_form(
+            step_id="systems",
+            data_schema=vol.Schema(options_schema),
+            description_placeholders={
+                "service_tag": self.config_entry.data.get("info", {}).get("ServiceTag", "Unknown"),
+                "host": self.config_entry.data.get("authdata", {}).get(CONF_HOST, "Unknown"),
+            },
+        )
 
 
 ##########################
@@ -358,3 +369,43 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
     await hass.async_add_executor_job(hub.__del__)
     return system_info
+
+
+def update_manager_status(embedded_systems: list[dict[str, Any]], managers: list[dict[str, Any]]) -> list[dict[str, Any]]:
+
+    """Update manager status based on embedded systems."""
+    updated_managers = [dict(m) for m in managers]
+    system_manager_map: dict[str, str] = {}
+
+    for system in embedded_systems:
+        system_id = system["id"]
+        manager_id = None
+
+        if "." in system_id:
+            parts = system_id.split(".")
+            if len(parts) >= 3:
+                manager_id = f"iDRAC.{parts[1]}.{parts[2]}"
+
+        if not manager_id:
+            for manager in updated_managers:
+                if system_id.replace("System", "iDRAC") == manager["id"]:
+                    manager_id = manager["id"]
+                    break
+
+        if manager_id:
+            system_manager_map[system_id] = manager_id
+
+    # Disable all managers first
+    for manager in updated_managers:
+        manager["enable"] = False
+
+    # Enable managers that have at least one enabled system
+    for system in embedded_systems:
+        if system.get("enable"):
+            if manager_id := system_manager_map.get(system["id"]):
+                for manager in updated_managers:
+                    if manager["id"] == manager_id:
+                        manager["enable"] = True
+                        break
+
+    return updated_managers

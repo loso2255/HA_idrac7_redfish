@@ -13,11 +13,12 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 
 # local import
-from .const import DELAY_TIME, DOMAIN, FANS, TEMPERATURE, WATTSENSOR, TotalWattConsumption
+from .const import DELAY_TIME, DOMAIN, FANS, PSU, TEMPERATURE, WATTSENSOR, TotalWattConsumption
 from .RedfishApi import RedfishApihub
 from .type_sensor.sensor.SensorCoordinator import SensorCoordinator
 from .type_sensor.sensor.Server_Fan_sensor import FanSensor
 from .type_sensor.sensor.Server_Power_sensor import ElectricitySensor
+from .type_sensor.sensor.Server_PSU_sensor import PSUSensor
 from .type_sensor.sensor.Server_Temperature_Sensor import TemperatureSensor
 
 
@@ -48,11 +49,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     # Set up sensors for each enabled embedded system
     for emb_sys in embedded_systems:
         # Skip disabled embedded systems
-        if not emb_sys.get("enable", False):
+        if not emb_sys.get("enable", True):
             _LOGGER.debug("Skipping disabled system: %s", emb_sys["id"])
             continue
 
-        # Set up sensors for this embedded system
         info_single_system["id"] = emb_sys["id"]
         _LOGGER.debug("Setting up sensors for system: %s", emb_sys["id"])
 
@@ -62,6 +62,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
             async_add_entities=async_add_entities,
             infoSingleSystem=info_single_system.copy()
         )
+        # Set up sensors for this embedded system
+
+
 
     # For future implementation: Manager sensors
     # managers = config_data["info"]["Managers"]
@@ -116,7 +119,12 @@ async def setup_Embedded_System_entry(hass: HomeAssistant, api : RedfishApihub, 
         _LOGGER.info("add sensorTemp for status: "+elm.get("Name"))
         toAddSensor.append( TemperatureSensor(coordinator, str({"type": TEMPERATURE, "id": elm.get("Name")}), device_info, infoSingleSystem) )
 
-    #TODO add PSU sensor
+    #add PSU voltage sensor
+    EmbSysPoweredBy = await hass.async_add_executor_job(api.getEmbeddedSystemPoweredBy, infoSingleSystem['id'])
+    _LOGGER.info("Power supply units: "+ str(EmbSysPoweredBy))
+    for psuID in EmbSysPoweredBy:
+        _LOGGER.info("add PSU voltage sensor for: "+psuID)
+        toAddSensor.append( PSUSensor(coordinator, str({"type": PSU, "id": psuID}), device_info, infoSingleSystem) )
 
     #add sensor
     async_add_entities(toAddSensor,True)

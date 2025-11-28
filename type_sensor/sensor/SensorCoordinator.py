@@ -16,7 +16,7 @@ from redfish.rest.v1 import (
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpdateCoordinator, UpdateFailed
 
-from ...const import FANS, REQUEST_SENSOR, TEMPERATURE, WATTSENSOR
+from ...const import FANS, PSU, REQUEST_SENSOR, TEMPERATURE, WATTSENSOR
 from ...RedfishApi import RedfishApihub
 
 _LOGGER = logging.getLogger(__name__)
@@ -52,6 +52,7 @@ class SensorCoordinator(DataUpdateCoordinator):
             result[TEMPERATURE] = {}
             result[FANS] = {}
             result[WATTSENSOR] = {}
+            result[PSU] = {}
 
             get: int = 0
 
@@ -120,7 +121,26 @@ class SensorCoordinator(DataUpdateCoordinator):
                         _LOGGER.error("Timeout update temperature Sensor: %s", elm.get("id"))
 
 
-                #TODO reading "PSU" voltage Sensor
+                ##########################################################################
+                # reading "PSU" voltage sensor type
+                elif elm.get("type") == PSU:
+                    try:
+                        async with async_timeout.timeout(REQUEST_SENSOR):
+
+                            #_LOGGER.info(msg="reading value of PSU: "+elm.get("id"))
+                            psuData = await self.hass.async_add_executor_job( self.my_api.getPSUSensor,  str(self.id_device), str(elm.get("id"))  )
+                            temp = result.get(PSU)
+
+                            temp.update( {elm.get("id"): psuData} )
+
+                            #print(str(temp))
+                            result[PSU] = temp
+
+                    except (RuntimeError, asyncio.TimeoutError) as err:
+                        _LOGGER.error("Timeout update PSU Sensor: %s", elm.get("id"))
+                    except Exception as err:
+                        _LOGGER.error("Error reading PSU Sensor %s: %s", elm.get("id"), str(err))
+                        # PSU might not be available (server off, hot-swap), continue with other sensors
 
 
 

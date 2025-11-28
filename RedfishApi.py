@@ -3,7 +3,7 @@ import logging
 import redfish
 from redfish.rest.v1 import HttpClient
 
-from .const import ChassisConsumptions, ChassisFans, ChassisGenThermal, General, ManagersGeneral, SetPowerStatus, SystemSpecific, SystemsGeneral
+from .const import ChassisConsumptions, ChassisFans, ChassisGenThermal, ChassisPSU, General, ManagersGeneral, SetPowerStatus, SystemSpecific, SystemsGeneral
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -231,6 +231,24 @@ class RedfishApihub:
         return fanID
     # }
 
+    def getEmbeddedSystemPoweredBy(self, idEmbSys) -> list[str]:
+    # {
+        logged = self.singleton_login()
+
+        resp = logged.get(SystemSpecific.substitute({'EmbeddedSystemID' : str(idEmbSys)}))
+
+        lsPSU = resp.dict.get("Links",{}).get("PoweredBy")
+        #_LOGGER.info( "all PSUs powering raw: " + str(lsPSU) )
+
+        psuID = []
+
+        for elm in lsPSU:
+            id_elm = elm.get("@odata.id").split("/")
+            psuID.append( id_elm[(len(id_elm) - 1)] )
+
+        return psuID
+    # }
+
 
     # poolling functions
 
@@ -264,6 +282,30 @@ class RedfishApihub:
         resp = logged.get( path = ChassisFans.substitute( {'EmbeddedSystemID' : str(idEmbSys), 'FanID': str(idFan) } ) )
 
         return str(resp.dict.get("Reading"))
+    # }
+
+    def getPSUSensor(self, idEmbSys, idPSU) -> dict[str, any]:
+    # {
+        logged = self.singleton_login()
+        #_LOGGER.info(msg="preso sensore PSU: "+idPSU)
+
+        resp = logged.get( path = ChassisPSU.substitute( {'EmbeddedSystemID' : str(idEmbSys), 'PSUid': str(idPSU) } ) )
+
+        respDict : dict = {}
+
+        respDict['Name'] = resp.dict.get('Name')
+        respDict['LineInputVoltage'] = resp.dict.get('LineInputVoltage')
+        respDict['PowerCapacityWatts'] = resp.dict.get('PowerCapacityWatts')
+        respDict['LastPowerOutputWatts'] = resp.dict.get('LastPowerOutputWatts')
+
+        status = resp.dict.get('Status')
+        if status is not None:
+            respDict['Health'] = status.get('Health')
+
+        respDict['Model'] = resp.dict.get('Model')
+        respDict['SerialNumber'] = resp.dict.get('SerialNumber')
+
+        return respDict
     # }
 
     def getAllFan(self, idEmbSys):
