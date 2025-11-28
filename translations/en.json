@@ -18,5 +18,35 @@
               }
           }
       }
+  },
+  "options": {
+      "step": {
+          "init": {
+              "menu_options": {
+                  "credentials": "Update credentials",
+                  "systems": "Configure systems"
+              }
+          },
+          "credentials": {
+              "title": "Update iDRAC Credentials",
+              "description": "Update the connection credentials for iDRAC {service_tag} at {host}. Changes will be tested before saving.",
+              "data": {
+                  "host": "Host",
+                  "username": "Username",
+                  "password": "Password",
+                  "time_delay": "Polling time (seconds)"
+              }
+          },
+          "systems": {
+              "title": "Configure Embedded Systems",
+              "description": "Enable or disable monitoring for embedded systems on iDRAC {service_tag} at {host}. Disabled systems will not have sensors created."
+          }
+      },
+      "error": {
+          "retries_exhausted": "Connection retries exhausted. The iDRAC server may be unreachable.",
+          "cannot_connect": "Failed to connect to iDRAC",
+          "invalid_auth": "Invalid authentication credentials",
+          "unknown": "Unexpected error occurred"
+      }
   }
 }

@@ -18,5 +18,35 @@
     "abort": {
       "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "menu_options": {
+          "credentials": "Update credentials",
+          "systems": "Configure systems"
+        }
+      },
+      "credentials": {
+        "title": "Update iDRAC Credentials",
+        "description": "Update connection credentials for {service_tag} ({host})",
+        "data": {
+          "host": "[%key:common::config_flow::data::host%]",
+          "username": "[%key:common::config_flow::data::username%]",
+          "password": "[%key:common::config_flow::data::password%]",
+          "time_delay": "[%key:component::HA_idrac7_redfish::config::step::user::data::time_delay%]"
+        }
+      },
+      "systems": {
+        "title": "Configure Embedded Systems",
+        "description": "Enable or disable monitoring for embedded systems on {service_tag} ({host})"
+      }
+    },
+    "error": {
+      "retries_exhausted": "Connection retries exhausted",
+      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
+      "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
+      "unknown": "[%key:common::config_flow::error::unknown%]"
+    }
   }
 }

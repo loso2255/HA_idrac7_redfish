@@ -18,5 +18,35 @@
               }
           }
       }
+  },
+  "options": {
+      "step": {
+          "init": {
+              "menu_options": {
+                  "credentials": "Aggiorna credenziali",
+                  "systems": "Configura sistemi"
+              }
+          },
+          "credentials": {
+              "title": "Aggiorna credenziali iDRAC",
+              "description": "Aggiorna le credenziali di connessione per iDRAC {service_tag} su {host}. Le modifiche saranno testate prima del salvataggio.",
+              "data": {
+                  "host": "Host",
+                  "username": "Nome utente",
+                  "password": "Password",
+                  "time_delay": "Tempo di polling (secondi)"
+              }
+          },
+          "systems": {
+              "title": "Configura sistemi embedded",
+              "description": "Abilita o disabilita il monitoraggio dei sistemi embedded su iDRAC {service_tag} su {host}. I sistemi disabilitati non avranno sensori creati."
+          }
+      },
+      "error": {
+          "retries_exhausted": "Tentativi di connessione esauriti. Il server iDRAC potrebbe essere irraggiungibile.",
+          "cannot_connect": "Impossibile connettersi a iDRAC",
+          "invalid_auth": "Credenziali di autenticazione non valide",
+          "unknown": "Si è verificato un errore imprevisto"
+      }
   }
 }

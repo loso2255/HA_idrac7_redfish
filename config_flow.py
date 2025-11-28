@@ -41,7 +41,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
 #       ConfigFlow
 #
 ###############################
-class ConfigFlow(ConfigFlow, domain=DOMAIN):
+class RedfishIdracConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for HA_idrac7_redfish."""
 
     VERSION = 1
@@ -119,7 +119,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
                     system["enable"] = user_input[system_id]
 
             # Update manager status based on enabled systems
-            self._update_manager_status()
+            self.update_manager_status()
 
             # Create config entry with complete data
             config_data = {
@@ -225,3 +225,43 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
     await hass.async_add_executor_job(hub.__del__)
     return system_info
+
+
+def update_manager_status(embedded_systems: list[dict[str, Any]], managers: list[dict[str, Any]]) -> list[dict[str, Any]]:
+
+    """Update manager status based on embedded systems."""
+    updated_managers = [dict(m) for m in managers]
+    system_manager_map: dict[str, str] = {}
+
+    for system in embedded_systems:
+        system_id = system["id"]
+        manager_id = None
+
+        if "." in system_id:
+            parts = system_id.split(".")
+            if len(parts) >= 3:
+                manager_id = f"iDRAC.{parts[1]}.{parts[2]}"
+
+        if not manager_id:
+            for manager in updated_managers:
+                if system_id.replace("System", "iDRAC") == manager["id"]:
+                    manager_id = manager["id"]
+                    break
+
+        if manager_id:
+            system_manager_map[system_id] = manager_id
+
+    # Disable all managers first
+    for manager in updated_managers:
+        manager["enable"] = False
+
+    # Enable managers that have at least one enabled system
+    for system in embedded_systems:
+        if system.get("enable"):
+            if manager_id := system_manager_map.get(system["id"]):
+                for manager in updated_managers:
+                    if manager["id"] == manager_id:
+                        manager["enable"] = True
+                        break
+
+    return updated_managers

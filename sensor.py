@@ -13,11 +13,12 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 
 # local import
-from .const import DELAY_TIME, DOMAIN, FANS, TEMPERATURE, WATTSENSOR, TotalWattConsumption
+from .const import DELAY_TIME, DOMAIN, FANS, PSU, TEMPERATURE, WATTSENSOR, TotalWattConsumption
 from .RedfishApi import RedfishApihub
 from .type_sensor.sensor.SensorCoordinator import SensorCoordinator
 from .type_sensor.sensor.Server_Fan_sensor import FanSensor
 from .type_sensor.sensor.Server_Power_sensor import ElectricitySensor
+from .type_sensor.sensor.Server_PSU_sensor import PSUSensor
 from .type_sensor.sensor.Server_Temperature_Sensor import TemperatureSensor
 
 
@@ -101,13 +102,18 @@ async def setup_Embedded_System_Sensor(hass: HomeAssistant, api : RedfishApihub,
     toAddSensor.append( ElectricitySensor(coordinator, str({"type": WATTSENSOR, "id": TotalWattConsumption}), device_info, infoSingleSystem) )
 
 
-    #TODO add temp sensor
+    #add temp sensor
     tempSensor = await hass.async_add_executor_job(api.getTemperatureSensor, infoSingleSystem['id'])
     for elm in tempSensor:
         _LOGGER.info("add sensorTemp for status: "+elm.get("Name"))
         toAddSensor.append( TemperatureSensor(coordinator, str({"type": TEMPERATURE, "id": elm.get("Name")}), device_info, infoSingleSystem) )
 
-    #TODO add PSU sensor
+    #add PSU voltage sensor
+    EmbSysPoweredBy = await hass.async_add_executor_job(api.getEmbeddedSystemPoweredBy, infoSingleSystem['id'])
+    _LOGGER.info("Power supply units: "+ str(EmbSysPoweredBy))
+    for psuID in EmbSysPoweredBy:
+        _LOGGER.info("add PSU voltage sensor for: "+psuID)
+        toAddSensor.append( PSUSensor(coordinator, str({"type": PSU, "id": psuID}), device_info, infoSingleSystem) )
 
 
 

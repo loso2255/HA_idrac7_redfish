@@ -16,7 +16,7 @@ from redfish.rest.v1 import (
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpdateCoordinator, UpdateFailed
 
-from ...const import FANS, REQUEST_SENSOR, TEMPERATURE, WATTSENSOR
+from ...const import FANS, PSU, REQUEST_SENSOR, TEMPERATURE, WATTSENSOR
 from ...RedfishApi import RedfishApihub
 
 _LOGGER = logging.getLogger(__name__)
@@ -46,15 +46,13 @@ class SensorCoordinator(DataUpdateCoordinator):
             listening_idx = set(self.async_contexts())
             #_LOGGER.info("entitys registered update sensor: "+str(listening_idx))
 
-
-
-
             result : dict = {}
 
             #set sensor type
             result[TEMPERATURE] = {}
             result[FANS] = {}
             result[WATTSENSOR] = {}
+            result[PSU] = {}
 
             get: int = 0
 
@@ -77,7 +75,7 @@ class SensorCoordinator(DataUpdateCoordinator):
                             result[FANS] = temp
 
                     except (RuntimeError, asyncio.TimeoutError) as err:
-                        _LOGGER.error(msg="Timeout update Fan Sensor: "+elm.get("id"))
+                        _LOGGER.error("Timeout update Fan Sensor: %s", elm.get("id"))
 
                 ##########################################################################
                 # reading "WATTToltal" sensor type
@@ -95,7 +93,7 @@ class SensorCoordinator(DataUpdateCoordinator):
 
 
                     except (RuntimeError, asyncio.TimeoutError) as err:
-                        _LOGGER.error(msg="Timeout update CONSUMPTION Sensor: "+elm.get("id"))
+                        _LOGGER.error("Timeout update CONSUMPTION Sensor: %s", elm.get("id"))
 
 
                 #############################################################################
@@ -114,14 +112,35 @@ class SensorCoordinator(DataUpdateCoordinator):
                             result[TEMPERATURE] = 0
                         else:
                             for elmi in resServer:
-                                result[TEMPERATURE][elmi.get("Name")] = elmi.get("ReadingCelsius")
+                                sensor_name = elmi.get("Name")
+                                if sensor_name:
+                                    result[TEMPERATURE][sensor_name] = elmi.get("ReadingCelsius")
 
 
                     except (RuntimeError, asyncio.TimeoutError) as err:
-                        _LOGGER.error(msg="Timeout update temperature Sensor: "+elm.get("id"))
+                        _LOGGER.error("Timeout update temperature Sensor: %s", elm.get("id"))
 
 
-                #TODO reading "PSU" voltage Sensor
+                ##########################################################################
+                # reading "PSU" voltage sensor type
+                elif elm.get("type") == PSU:
+                    try:
+                        async with async_timeout.timeout(REQUEST_SENSOR):
+
+                            #_LOGGER.info(msg="reading value of PSU: "+elm.get("id"))
+                            psuData = await self.hass.async_add_executor_job( self.my_api.getPSUSensor,  str(self.id_device), str(elm.get("id"))  )
+                            temp = result.get(PSU)
+
+                            temp.update( {elm.get("id"): psuData} )
+
+                            #print(str(temp))
+                            result[PSU] = temp
+
+                    except (RuntimeError, asyncio.TimeoutError) as err:
+                        _LOGGER.error("Timeout update PSU Sensor: %s", elm.get("id"))
+                    except Exception as err:
+                        _LOGGER.error("Error reading PSU Sensor %s: %s", elm.get("id"), str(err))
+                        # PSU might not be available (server off, hot-swap), continue with other sensors
 
 
 
@@ -134,4 +153,5 @@ class SensorCoordinator(DataUpdateCoordinator):
             raise ConfigEntryAuthFailed from err
 
         except Exception as err:
-            raise UpdateFailed(f"Error communicating with API SensorCoordinator: {err.with_traceback()}")
+            # Use proper error handling - don't call with_traceback() without args
+            raise UpdateFailed(f"Error communicating with API SensorCoordinator: {err}") from err

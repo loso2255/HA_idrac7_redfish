@@ -9,7 +9,7 @@ from ...RedfishApi import RedfishApihub
 
 class ServerPowerButton(ButtonEntity):
 
-    def __init__(self, hass, api: RedfishApihub, device_info : DeviceInfo, infoSingleSystem : dict ) -> None:
+    def __init__(self, hass: HomeAssistant, api: RedfishApihub, device_info : DeviceInfo, infoSingleSystem : dict ) -> None:
         super().__init__()
         self.hass = hass
         self.api = api

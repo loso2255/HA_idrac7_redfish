@@ -26,15 +26,20 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     """Set up entry."""
     api : RedfishApihub = hass.data[DOMAIN][config_entry.entry_id]
-    #_LOGGER.info("config_entry: "+str(config_entry.data))
 
-    # topology info test connections
-    info = await hass.async_add_executor_job(api.getRedfishInfo)
+    # Get embedded systems and their status from config_entry data
+    config_data = config_entry.data
+    service_tag = config_data["info"]["ServiceTag"]
+    pulling_time = config_data["authdata"][DELAY_TIME]
+    embedded_systems = config_data["info"]["Members"]
 
+    _LOGGER.debug("Setting up binary sensors for iDRAC %s", service_tag)
 
-    infoSingleSystem : dict = {}
-    infoSingleSystem['ServiceTag'] = info['ServiceTag']
-    infoSingleSystem['PullingTime'] = config_entry.data["authdata"][DELAY_TIME]
+    # Prepare base info for each system
+    infoSingleSystem : dict = {
+        "ServiceTag": service_tag,
+        "PullingTime": pulling_time
+    }
 
     # nel for, per ogni embbeddded system get System.Embedded.info
     # setto i sensori dell'embedded system
@@ -45,8 +50,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
         _LOGGER.info(msg="setup binary_sensor for: "+ str(EmbSys["enable"])+"  "+ str(EmbSys['id']))
         if EmbSys["enable"] is True:
 
-            _LOGGER.info(msg="form Server: "+info['ServiceTag']+"   setup binary_sensor for: "+ EmbSys['id'])
-            status = await setup_Embedded_System_entry(hass= hass, api= api, async_add_entities= async_add_entities, infoSingleSystem= infoSingleSystem)
+        infoSingleSystem['id'] = EmbSys['id']
+        _LOGGER.info("form Server: %s   setup binary_sensor for: %s", service_tag, EmbSys['id'])
+        await setup_Embedded_System_entry(hass= hass, api= api, async_add_entities= async_add_entities, infoSingleSystem= infoSingleSystem)
 
 
 
