@@ -20,6 +20,7 @@ git clone https://github.com/loso2255/HA_idrac7_redfish.git
 
 - please report any bug in the issue
 
+- this integration should work with any idrac version, but i have only tested on my dell R720 with idrac7
 
 --------------------------------
 # structural idea / Roadmap
