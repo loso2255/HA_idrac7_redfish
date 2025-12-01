@@ -41,4 +41,4 @@ git clone https://github.com/loso2255/HA_idrac7_redfish.git
     -  button for change power status of the server [OK]
 
 - each sub_device can be registered or not in the config_flow (and later added or removed)  [OK]
-- add the possibility to modify cretential, and enable or disable system [OK]
+- add the possibility to modify credential, and enable or disable system [OK]
