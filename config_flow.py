@@ -118,7 +118,7 @@ class RedfishIdracConfigFlow(ConfigFlow, domain=DOMAIN):
                     system["enable"] = user_input[system_id]
 
             # Update manager status based on enabled systems
-            self.update_manager_status()
+            self._update_manager_status()
 
             # Create config entry with complete data
             config_data = {
