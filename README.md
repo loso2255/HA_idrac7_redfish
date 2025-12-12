@@ -18,8 +18,9 @@ git clone https://github.com/loso2255/HA_idrac7_redfish.git
 - in order to get a correct info retrival from idrac redfish, the initial configuration MUST be done with the server powered ON (power ON the server before try to add the device to home assistant).
   this i because redfish does not expose all' sensor when the server is in off state
 
-- please report any bug in the issue
+- this plugin shuold work with any idrac Version but is only teste on my Idrac7
 
+- please report any bug in the issue
 
 --------------------------------
 # structural idea / Roadmap
